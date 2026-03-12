@@ -95,7 +95,7 @@ services:
         VITE_USE_MOCKS: "false"
     restart: unless-stopped
     ports:
-      - "3333:3333"
+      - "3333:80"
     depends_on:
       - ai_agent
 
