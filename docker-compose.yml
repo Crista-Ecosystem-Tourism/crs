@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     ports:
       - "8001:8001"
+    volumes:
+      - ./vectorization_backend/data:/app/data
     environment:
       EMBEDDING_PROVIDER: huggingface
       EMBEDDING_MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
