@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme (default) */
+  :root {
+    --color-background: #ffffff;
+    --color-surface: #f9fafb;
+    --color-surface-light: #f3f4f6;
+    --color-surface-hover: #e5e7eb;
+    --color-border: #e5e7eb;
+    --color-border-light: #d1d5db;
+    --color-primary: #10a37f;
+    --color-primary-hover: #0e906f;
+    --color-text: #111827;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-accent: #8b5cf6;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+  }
+
+  /* Dark theme */
+  .dark {
+    --color-background: #0d0d0d;
+    --color-surface: #171717;
+    --color-surface-light: #1e1e1e;
+    --color-surface-hover: #2a2a2a;
+    --color-border: #2f2f2f;
+    --color-border-light: #3f3f3f;
+    --color-primary: #10a37f;
+    --color-primary-hover: #0e906f;
+    --color-text: #ececec;
+    --color-text-secondary: #9b9b9b;
+    --color-text-muted: #8a8a8a;
+    --color-accent: #ab68ff;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    transition: background-color 0.2s, color 0.2s;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-light);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text-muted);
+  }
+
+  /* Leaflet popup customization */
+  .leaflet-popup-content-wrapper {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .leaflet-popup-content {
+    margin: 12px !important;
+  }
+
+  .leaflet-popup-tip {
+    background: var(--color-surface) !important;
+  }
+
+  .leaflet-container {
+    font-family: inherit !important;
+  }
+
+  /* Custom marker styles */
+  .custom-marker {
+    background: transparent !important;
+    border: none !important;
+  }
+}
+
+@layer components {
+  .chat-bubble {
+    @apply relative px-4 py-3 rounded-2xl max-w-[80%];
+  }
+
+  .chat-bubble-user {
+    @apply bg-primary text-white ml-auto rounded-br-md;
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-surface-light text-text mr-auto rounded-bl-md;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+venv/
+.env
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+alembic/versions/*.pyc
+
+# Debug/test artifacts
+e2e_*.json
+test_request.json
+test_response.json
+text.txt

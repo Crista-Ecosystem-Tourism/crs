@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphMap Visualizer</title>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=ru_RU" type="text/javascript"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 400px; background: #f8f9fa; padding: 20px; overflow-y: auto; border-right: 1px solid #dee2e6; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #495057; font-size: 14px; }
+        .form-group textarea { width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px; resize: vertical; transition: border-color 0.3s; }
+        .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .form-group input[type="number"], .form-group input[type="text"] { width: 100%; padding: 10px 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .hint { font-size: 12px; color: #6c757d; margin-top: 5px; line-height: 1.4; }
+        .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { background: #adb5bd; cursor: not-allowed; transform: none; }
+        .example-link { display: inline-block; margin-top: 10px; margin-right: 10px; color: #667eea; font-size: 13px; cursor: pointer; text-decoration: underline; }
+        .example-link:hover { color: #764ba2; }
+        #map { flex: 1; background: #e0e0e0; }
+        .status { padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 14px; display: none; }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loader { display: none; text-align: center; padding: 20px; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .stats { background: white; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #dee2e6; display: none; }
+        .stats h3 { font-size: 16px; margin-bottom: 10px; color: #495057; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; }
+        .stat-item { background: #f8f9fa; padding: 8px; border-radius: 4px; }
+        .stat-label { color: #6c757d; font-size: 11px; text-transform: uppercase; }
+        .stat-value { font-weight: 600; color: #495057; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ GraphMap Visualizer</h1>
+        <p>Визуализация взвешенных графов с маршрутизацией</p>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <div id="status" class="status"></div>
+            <div class="loader" id="loader">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #6c757d;">Построение графа...</p>
+            </div>
+            <form id="graphForm">
+                <div class="form-group">
+                    <label for="apiUrl">🔗 API Endpoint</label>
+                    <input type="text" id="apiUrl" value="http://localhost:8000/api/v1/graph/build">
+                </div>
+                <div class="form-group">
+                    <label for="coordinates">📍 Координаты (lat,lon,weight,name)</label>
+                    <textarea id="coordinates" rows="10" placeholder="Примеры:
+
+Список точек:
+43.596375,39.737488,5.0,Моремолл
+43.598234,39.740123,3.5,Парк
+43.600111,39.735456,2.0,Вокзал
+
+Или генерация:
+43.596375,39.737488,10,2
+(центр, количество точек, радиус в км)"></textarea>
+                    <div class="hint">
+                        📝 Формат: <code>широта,долгота,вес,название</code><br>
+                        🎲 Генерация: <code>широта,долгота,количество(≤25),радиус_км(≤25)</code>
+                    </div>
+                    <a class="example-link" onclick="AppController.getInstance().loadPreset('sochi')">Загрузить пример (Сочи)</a>
+                    <a class="example-link" onclick="AppController.getInstance().loadPreset('random')">Генерировать случайные</a>
+                </div>
+                <div class="form-row" style="visibility: hidden; position: absolute;">
+                    <div class="form-group">
+                        <label for="baseRadius">📏 Радиус связей (м)</label>
+                        <input type="number" id="baseRadius" value="500" min="100" max="5000" step="50">
+                    </div>
+                    <div class="form-group" style="visibility: hidden; position: absolute;">
+                        <label for="minConnections">🔗 Мин. связей</label>
+                        <input type="number" id="minConnections" value="2" min="1" max="10">
+                    </div>
+                </div>
+                <div class="form-group" style="visibility: hidden; position: absolute;">
+                    <label for="kAlternatives">🛣️ Альтернативные пути</label>
+                    <input type="number" id="kAlternatives" value="0" min="0" max="10">
+                    <div class="hint">Количество альтернативных маршрутов (0 = без альтернатив)</div>
+                </div>
+                <div class="form-group" style="visibility: hidden; position: absolute;">
+                    <label>
+                        <input type="checkbox" id="useOsrm" checked>
+                        Использовать OSRM для маршрутизации
+                    </label>
+                </div>
+                <button type="submit" class="btn" id="submitBtn">🚀 Построить граф</button>
+            </form>
+            <div class="stats" id="stats">
+                <h3>📊 Статистика графа</h3>
+                <div class="stats-grid" id="statsContent"></div>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+    <script>
+        const AbstractFactory = (() => {
+            class CoordinateParser {
+                parse(text) { throw new Error('Abstract method'); }
+            }
+            
+            class ListParser extends CoordinateParser {
+                parse(text) {
+                    return text.trim().split('\n')
+                        .filter(line => line.trim())
+                        .reduce((acc, line, idx) => {
+                            const parts = line.split(',').map(p => p.trim());
+                            if (parts.length < 2) throw new Error(`Строка ${idx + 1}: недостаточно данных`);
+                            const [lat, lon, weight, name] = [
+                                parseFloat(parts[0]),
+                                parseFloat(parts[1]),
+                                parts[2] ? parseFloat(parts[2]) : 1.0,
+                                parts[3] || `Точка ${idx + 1}`
+                            ];
+                            if ([lat, lon, weight].some(isNaN)) throw new Error(`Строка ${idx + 1}: неверный формат`);
+                            return [...acc, { lat, lon, weight, name }];
+                        }, []);
+                }
+            }
+            
+            class GeneratorParser extends CoordinateParser {
+                parse(text) {
+                    const parts = text.split(',').map(p => p.trim());
+                    const [lat, lon, count, radiusKm] = parts.map(parseFloat);
+                    if ([lat, lon, count, radiusKm].some(isNaN)) throw new Error('Неверный формат генерации');
+                    if (count > 25 || radiusKm > 25) throw new Error('Превышены лимиты');
+                    return this._generate(lat, lon, count, radiusKm);
+                }
+                
+                _generate(centerLat, centerLon, count, radiusKm) {
+                    const radiusDeg = radiusKm / 111;
+                    return Array.from({ length: count }, (_, i) => {
+                        const angle = Math.random() * 2 * Math.PI;
+                        const dist = Math.random() * radiusDeg;
+                        return {
+                            lat: parseFloat((centerLat + dist * Math.cos(angle)).toFixed(6)),
+                            lon: parseFloat((centerLon + dist * Math.sin(angle) / Math.cos(centerLat * Math.PI / 180)).toFixed(6)),
+                            weight: parseFloat((Math.random() * 9 + 1).toFixed(2)),
+                            name: `Точка ${i + 1}`
+                        };
+                    });
+                }
+            }
+            
+            return {
+                createParser: (text) => {
+                    const lines = text.trim().split('\n').filter(l => l.trim());
+                    return lines.length === 1 && lines[0].split(',').length === 4 
+                        ? new GeneratorParser() 
+                        : new ListParser();
+                }
+            };
+        })();
+
+        const MapStrategy = (() => {
+            class RenderStrategy {
+                render(map, data) { throw new Error('Abstract method'); }
+            }
+            
+            class EdgeRenderer extends RenderStrategy {
+                render(map, edges) {
+                    return edges.map(edge => {
+                        const polyline = new ymaps.Polyline(
+                            edge.route_geometry.map(coord => [coord[1], coord[0]]),
+                            {
+                                hintContent: `${edge.from_node.name} → ${edge.to_node.name}`,
+                                balloonContent: `<strong>${edge.from_node.name} → ${edge.to_node.name}</strong><br>Расстояние: ${Math.round(edge.distance_m)} м`
+                            },
+                            { strokeColor: '#2196F3', strokeWidth: 4, strokeOpacity: 0.8 }
+                        );
+                        map.geoObjects.add(polyline);
+                        return polyline;
+                    });
+                }
+            }
+            
+            class AlternativeRenderer extends RenderStrategy {
+                render(map, alternatives) {
+                    return (alternatives || []).map((alt, idx) => {
+                        const polyline = new ymaps.Polyline(
+                            alt.route_geometry.map(coord => [coord[1], coord[0]]),
+                            {
+                                hintContent: `Альтернативный маршрут ${idx + 1}`,
+                                balloonContent: `<strong>Альтернатива ${idx + 1}</strong><br>Расстояние: ${Math.round(alt.distance_m)} м`
+                            },
+                            { strokeColor: '#3498db', strokeWidth: 5, strokeOpacity: 0.6, strokeStyle: 'dash' }
+                        );
+                        map.geoObjects.add(polyline);
+                        return polyline;
+                    });
+                }
+            }
+            
+            class NodeRenderer extends RenderStrategy {
+                render(map, nodes) {
+                    return nodes.map(node => {
+                        const size = 10 + node.weight * 3;
+                        const placemark = new ymaps.Placemark(
+                            [node.lat, node.lon],
+                            {
+                                hintContent: node.name || `Точка ${node.id}`,
+                                balloonContent: `<strong>${node.name || 'Точка ' + node.id}</strong><br>📍 ${node.lat.toFixed(5)}, ${node.lon.toFixed(5)}<br>⚖️ Вес: ${node.weight.toFixed(2)}`
+                            },
+                            {
+                                iconLayout: 'default#image',
+                                iconImageHref: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="#3ec914ff" stroke="white" stroke-width="3"/></svg>`),
+                                iconImageSize: [size, size],
+                                iconImageOffset: [-size/2, -size/2]
+                            }
+                        );
+                        map.geoObjects.add(placemark);
+                        return placemark;
+                    });
+                }
+            }
+            
+            return { EdgeRenderer, AlternativeRenderer, NodeRenderer };
+        })();
+
+        const ObserverPattern = (() => {
+            class Subject {
+                constructor() {
+                    this._observers = [];
+                }
+                
+                attach(observer) {
+                    this._observers.push(observer);
+                }
+                
+                notify(data) {
+                    this._observers.forEach(observer => observer.update(data));
+                }
+            }
+            
+            class StatusObserver {
+                update(data) {
+                    const statusEl = document.getElementById('status');
+                    statusEl.textContent = data.message;
+                    statusEl.className = `status ${data.type}`;
+                    statusEl.style.display = 'block';
+                    if (['success', 'error'].includes(data.type)) {
+                        setTimeout(() => statusEl.style.display = 'none', 5000);
+                    }
+                }
+            }
+            
+            class LoaderObserver {
+                update(data) {
+                    document.getElementById('loader').style.display = data.loading ? 'block' : 'none';
+                    document.getElementById('submitBtn').disabled = data.loading;
+                }
+            }
+            
+            class StatsObserver {
+                update(data) {
+                    if (!data.stats) return;
+                    const { metrics, nodeCount, edgeCount } = data.stats;
+                    document.getElementById('statsContent').innerHTML = `
+                        <div class="stat-item"><div class="stat-label">Узлов</div><div class="stat-value">${nodeCount}</div></div>
+                        <div class="stat-item"><div class="stat-label">Рёбер</div><div class="stat-value">${edgeCount}</div></div>
+                        <div class="stat-item"><div class="stat-label">Ср. степень</div><div class="stat-value">${metrics.avg_degree?.toFixed(1) || 'N/A'}</div></div>
+                        <div class="stat-item"><div class="stat-label">Плотность</div><div class="stat-value">${(metrics.graph_density * 100)?.toFixed(1) || 'N/A'}%</div></div>
+                        <div class="stat-item"><div class="stat-label">Ср. расстояние</div><div class="stat-value">${Math.round(metrics.avg_edge_distance_m || 0)} м</div></div>
+                        <div class="stat-item"><div class="stat-label">Макс. расстояние</div><div class="stat-value">${Math.round(metrics.max_edge_distance_m || 0)} м</div></div>
+                    `;
+                    document.getElementById('stats').style.display = 'block';
+                }
+            }
+            
+            return { Subject, StatusObserver, LoaderObserver, StatsObserver };
+        })();
+
+        class MapFacade {
+            constructor() {
+                this._map = null;
+                this._renderers = [
+                    new MapStrategy.EdgeRenderer(),
+                    new MapStrategy.AlternativeRenderer(),
+                    new MapStrategy.NodeRenderer()
+                ];
+            }
+            
+            initialize(containerId) {
+                return new Promise(resolve => {
+                    ymaps.ready(() => {
+                        this._map = new ymaps.Map(containerId, {
+                            center: [43.596375, 39.737488],
+                            zoom: 12,
+                            controls: ['zoomControl', 'typeSelector', 'fullscreenControl']
+                        });
+                        resolve(this._map);
+                    });
+                });
+            }
+            
+            clear() {
+                this._map?.geoObjects.removeAll();
+            }
+            
+            renderGraph(graphData) {
+                this.clear();
+                this._renderers[0].render(this._map, graphData.edges);
+                this._renderers[1].render(this._map, graphData.alternatives);
+                this._renderers[2].render(this._map, graphData.nodes);
+                
+                if (graphData.nodes.length > 0) {
+                    this._map.setBounds(this._map.geoObjects.getBounds(), {
+                        checkZoomRange: true,
+                        zoomMargin: 50
+                    });
+                }
+            }
+        }
+
+        class APIClient {
+            constructor(baseUrl) {
+                this._baseUrl = baseUrl;
+            }
+            
+            async buildGraph(payload) {
+                const response = await fetch(this._baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Ошибка сервера');
+                }
+                
+                return response.json();
+            }
+        }
+
+        class AppController {
+            static _instance = null;
+            
+            static getInstance() {
+                if (!AppController._instance) {
+                    AppController._instance = new AppController();
+                }
+                return AppController._instance;
+            }
+            
+            constructor() {
+                if (AppController._instance) {
+                    throw new Error('Use getInstance()');
+                }
+                
+                this._mapFacade = new MapFacade();
+                this._subject = new ObserverPattern.Subject();
+                this._presets = {
+                    sochi: `43.605038,39.732414,5.0,ТЦ Моремолл
+43.588044,39.715406,3.5,Парк Ривьера  
+43.591508,39.728264,2.0,Вокзал Сочи
+43.586660,39.712880,1.5,Пляж Ривьера  
+43.570739,39.742402,4.0,Дендрарий
+43.585331,39.723061,4.0,Морской вокзал Сочи
+43.588000,39.717000,4.0,Главный городской маяк Сочи`,
+                    random: '43.596375,39.737488,15,3'
+                };
+                
+                this._subject.attach(new ObserverPattern.StatusObserver());
+                this._subject.attach(new ObserverPattern.LoaderObserver());
+                this._subject.attach(new ObserverPattern.StatsObserver());
+                
+                this._initialize();
+            }
+            
+            async _initialize() {
+                await this._mapFacade.initialize('map');
+                this._subject.notify({ message: '✅ Карта загружена', type: 'success' });
+                this._bindEvents();
+            }
+            
+            _bindEvents() {
+                document.getElementById('graphForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this._handleSubmit();
+                });
+            }
+            
+            async _handleSubmit() {
+                try {
+                    this._subject.notify({ loading: true });
+                    this._subject.notify({ message: 'Парсинг координат...', type: 'info' });
+                    
+                    const formData = this._extractFormData();
+                    const parser = AbstractFactory.createParser(formData.coordinatesText);
+                    const points = parser.parse(formData.coordinatesText);
+                    
+                    this._subject.notify({ message: `Отправка ${points.length} точек на сервер...`, type: 'info' });
+                    
+                    const client = new APIClient(formData.apiUrl);
+                    const graphData = await client.buildGraph({
+                        points,
+                        use_osrm_scoring: formData.useOsrm,
+                        base_radius_m: formData.baseRadius,
+                        min_connections: formData.minConnections,
+                        k_alternatives: formData.kAlternatives
+                    });
+                    
+                    this._mapFacade.renderGraph(graphData);
+                    
+                    this._subject.notify({
+                        message: `✅ Граф построен за ${graphData.build_time_seconds}с: ${graphData.nodes.length} узлов, ${graphData.edges.length} рёбер`,
+                        type: 'success'
+                    });
+                    
+                    this._subject.notify({
+                        stats: {
+                            metrics: graphData.metrics,
+                            nodeCount: graphData.nodes.length,
+                            edgeCount: graphData.edges.length
+                        }
+                    });
+                    
+                } catch (error) {
+                    this._subject.notify({ message: `❌ Ошибка: ${error.message}`, type: 'error' });
+                    console.error(error);
+                } finally {
+                    this._subject.notify({ loading: false });
+                }
+            }
+            
+            _extractFormData() {
+                return {
+                    apiUrl: document.getElementById('apiUrl').value,
+                    coordinatesText: document.getElementById('coordinates').value,
+                    baseRadius: parseInt(document.getElementById('baseRadius').value),
+                    minConnections: parseInt(document.getElementById('minConnections').value),
+                    kAlternatives: parseInt(document.getElementById('kAlternatives').value),
+                    useOsrm: document.getElementById('useOsrm').checked
+                };
+            }
+            
+            loadPreset(presetName) {
+                if (this._presets[presetName]) {
+                    document.getElementById('coordinates').value = this._presets[presetName];
+                }
+            }
+        }
+        
+        AppController.getInstance();
+    </script>
+</body>
+</html>

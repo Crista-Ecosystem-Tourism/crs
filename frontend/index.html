@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/crista.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crista Online — Умный помощник для путешествий</title>
+    <meta name="description" content="Crista Online — умный AI-помощник для планирования путешествий. Создавайте маршруты, находите лучшие места и планируйте поездки с помощью искусственного интеллекта." />
+    <meta name="theme-color" content="#3BA8B8" />
+    <link rel="canonical" href="https://crista.online/" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Crista Online" />
+    <meta property="og:title" content="Crista Online — Умный помощник для путешествий" />
+    <meta property="og:description" content="Создавайте маршруты, находите лучшие места и планируйте поездки с помощью искусственного интеллекта." />
+    <meta property="og:url" content="https://crista.online/" />
+    <meta property="og:image" content="https://crista.online/og-image.png" />
+    <meta property="og:locale" content="ru_RU" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Crista Online — Умный помощник для путешествий" />
+    <meta name="twitter:description" content="Создавайте маршруты, находите лучшие места и планируйте поездки с помощью искусственного интеллекта." />
+    <meta name="twitter:image" content="https://crista.online/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Crista Online",
+      "url": "https://crista.online",
+      "description": "Умный AI-помощник для планирования путешествий. Создавайте маршруты, находите лучшие места и планируйте поездки.",
+      "applicationCategory": "TravelApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "ru",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "RUB"
+      }
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Prevent flash of wrong theme
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body class="bg-background text-text antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
