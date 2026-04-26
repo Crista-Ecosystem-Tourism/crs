@@ -37,7 +37,7 @@ export function LoginForm() {
     return (
         <AuthLayout
             title="Войдите в аккаунт"
-            subtitle="Каждое ваше путешествие обучает нашу нейросеть. Рекомендации становятся точнее с каждой поездкой."
+            subtitle="С возвращением! Введите свои данные."
         >
             <div className="mt-8 grid gap-8">
                 <form onSubmit={handleSubmit} className="grid gap-5">
@@ -88,18 +88,6 @@ export function LoginForm() {
                         {loading ? 'Входим...' : 'Войти'}
                     </Button>
                 </form>
-
-                {/* Product info banner */}
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-[0.82rem] leading-relaxed text-text-secondary">
-                    <p className="font-semibold text-text mb-1">🚀 Тестовый режим</p>
-                    <p>
-                        Сейчас доступны <span className="font-semibold text-text">Сочи</span> и <span className="font-semibold text-text">Санкт-Петербург</span>.
-                        Модуль статей и путеводителей — в разработке.
-                    </p>
-                    <p className="mt-1.5 text-text-muted">
-                        Ваши маршруты обучают нейросеть — чем больше вы путешествуете с нами, тем умнее становятся рекомендации.
-                    </p>
-                </div>
 
                 <div className="text-center text-[0.9rem] md:text-left">
                     <span className="text-[#888888]">Нет аккаунта? </span>
