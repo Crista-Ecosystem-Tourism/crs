@@ -3,7 +3,7 @@ import { ChatMessage, Place, User, AuthState, SubscriptionPlan, ModalType, Saved
 import { welcomeMessage, generateAIResponse, createUserMessage } from '@/mocks/chat'
 import { getPlacesByCity, getCityCenter, getCityName, parisPlaces, georgiaPlaces, baliPlaces, altaiPlaces, kyotoPlaces, spbPlaces, kenyaPlaces } from '@/mocks/places'
 import { delay, generateId } from '@/lib/utils'
-import { isMockMode, checkHealth, createSession, sendMessage as apiSendMessage, loadSession, clearSession, listSessions, getHistory, updateSessionTitle } from '@/api/chatApi'
+import { isMockMode, checkHealth, createSession, sendMessage as apiSendMessage, loadSession, clearSession, listSessions, getHistory, updateSessionTitle, attachSession } from '@/api/chatApi'
 import { mapMessageOutToChatMessage, mapHistoryToMessages, computeMapCenter, computeMapZoom } from '@/api/mappers'
 import { ApiError } from '@/api/chatApi'
 import { login as apiLogin, register as apiRegister, getMe, logout as apiLogout, getToken } from '@/api/authApi'
@@ -31,6 +31,8 @@ export interface ChatHistoryItem {
   messages: ChatMessage[]
   places: Place[]
   createdAt: string
+  /** Секрет анонимной сессии (до attach после входа); для сессий только с сервера может быть пусто */
+  sessionSecret?: string
 }
 
 // Trip data for suggestions
@@ -334,7 +336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const ratings = pendingRatingsRef.current
     const sid = sessionRef.current?.sessionId
     if (ratings && sid && !isMockMode()) {
-      apiSavePlaceRatings(sid, ratings).catch(() => {})
+      apiSavePlaceRatings(sid, ratings, sessionRef.current?.sessionSecret).catch(() => {})
       pendingRatingsRef.current = null
     }
   }, [])
@@ -362,6 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         apiSavePlacesSnapshot(
           sid,
           updatedPlaces as unknown as Record<string, unknown>[],
+          sessionRef.current?.sessionSecret,
         ).catch(() => {})
       }
     }, 500)
@@ -372,7 +375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const [historyOut, savedPlaces] = await Promise.all([
         getHistory(sessionId, sessionSecret, 'full'),
-        apiLoadPlacesSnapshot(sessionId).catch(() => null),
+        apiLoadPlacesSnapshot(sessionId, sessionSecret).catch(() => null),
       ])
       const msgs = mapHistoryToMessages(historyOut.messages, sessionId)
       if (msgs.length > 0 || savedPlaces) {
@@ -532,6 +535,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       setAuthState('registered')
       setActiveModal(null)
+      if (sessionRef.current?.sessionId && sessionRef.current?.sessionSecret) {
+        try {
+          await attachSession(sessionRef.current.sessionId, sessionRef.current.sessionSecret)
+        } catch { /* сессия уже привязана или гость без чата */ }
+      }
       await loadUserSessions()
     } catch (error) {
       const msg = error instanceof ApiError ? error.detail : 'Ошибка входа'
@@ -555,6 +563,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       setAuthState('registered')
       setActiveModal(null)
+      if (sessionRef.current?.sessionId && sessionRef.current?.sessionSecret) {
+        try {
+          await attachSession(sessionRef.current.sessionId, sessionRef.current.sessionSecret)
+        } catch { /* нет анонимной сессии или уже привязана */ }
+      }
     } catch (error) {
       const msg = error instanceof ApiError ? error.detail : 'Ошибка регистрации'
       setAuthError(msg)
@@ -613,14 +626,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // If messages already loaded locally — still fetch ratings/graph from backend
     if (chat && chat.messages.length > 0) {
       setMessages(chat.messages)
-      sessionRef.current = { sessionId: chatId, sessionSecret: '' }
+      const cachedSecret =
+        chat.sessionSecret
+        ?? (sessionRef.current?.sessionId === chatId ? sessionRef.current.sessionSecret : '')
+        ?? ''
+      sessionRef.current = { sessionId: chatId, sessionSecret: cachedSecret }
 
       // Load ratings + graph from backend to merge into cached places
       if (!isMockMode() && backendAvailable && chat.places.length > 0) {
         try {
           const [savedRatings, savedGraph] = await Promise.all([
-            apiLoadPlaceRatings(chatId),
-            apiLoadGraphGeoJSON(chatId),
+            apiLoadPlaceRatings(chatId, cachedSecret),
+            apiLoadGraphGeoJSON(chatId, cachedSecret),
           ])
           let merged = chat.places
           if (savedRatings) {
@@ -680,9 +697,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         let restoredPlaces: Place[] = []
         try {
           const [savedPlaces, savedRatings, savedGraph] = await Promise.all([
-            apiLoadPlacesSnapshot(chatId),
-            apiLoadPlaceRatings(chatId),
-            apiLoadGraphGeoJSON(chatId),
+            apiLoadPlacesSnapshot(chatId, secret),
+            apiLoadPlaceRatings(chatId, secret),
+            apiLoadGraphGeoJSON(chatId, secret),
           ])
           // Use saved places snapshot as the source of truth
           const basePlaces: Place[] = savedPlaces
@@ -805,7 +822,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const oldId = currentChatId
           setCurrentChatId(session.sessionId)
           setChatHistory(prev => prev.map(c =>
-            c.id === oldId ? { ...c, id: session.sessionId } : c
+            c.id === oldId
+              ? { ...c, id: session.sessionId, sessionSecret: session.sessionSecret || c.sessionSecret }
+              : c
           ))
         }
 
@@ -859,6 +878,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           apiSavePlacesSnapshot(
             sessionRef.current.sessionId,
             newPlaces as unknown as Record<string, unknown>[],
+            sessionRef.current.sessionSecret,
           ).catch(() => {})
         }
 
@@ -886,6 +906,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 destination: cityName,
                 messages: [...updated[existingIndex].messages, userMsg, aiResponse],
                 places: newPlaces,
+                sessionSecret: sessionRef.current?.sessionSecret ?? updated[existingIndex].sessionSecret,
               }
               // Update title on backend
               if (needsTitle && !useMocks && sessionRef.current) {
@@ -905,6 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 messages: [welcomeMessage, userMsg, aiResponse],
                 places: newPlaces,
                 createdAt: new Date().toISOString(),
+                sessionSecret: sessionRef.current?.sessionSecret,
               },
               ...prev,
             ]
@@ -1061,7 +1083,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Persist graph to backend
       const sid = sessionRef.current?.sessionId
       if (sid && !isMockMode() && result.geojson) {
-        apiSaveGraphGeoJSON(sid, result.geojson).catch(() => {})
+        apiSaveGraphGeoJSON(sid, result.geojson, sessionRef.current?.sessionSecret).catch(() => {})
       }
     } catch (e) {
       console.error('Graph build error:', e)

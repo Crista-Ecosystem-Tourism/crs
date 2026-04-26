@@ -41,7 +41,7 @@ describe('savePlaceRatings', () => {
       expect.stringContaining('/chat/sessions/sess-1/place-ratings'),
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ ratings }),
+        body: JSON.stringify({ ratings, session_secret: null }),
       }),
     )
   })
@@ -75,7 +75,7 @@ describe('saveGraphGeoJSON', () => {
       expect.stringContaining('/chat/sessions/sess-1/graph'),
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ geojson }),
+        body: JSON.stringify({ geojson, session_secret: null }),
       }),
     )
   })

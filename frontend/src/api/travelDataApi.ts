@@ -3,6 +3,13 @@ import { getAuthHeaders } from './authApi'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
+function secretQuery(sessionSecret?: string | null): string {
+  if (!sessionSecret) return ''
+  const p = new URLSearchParams()
+  p.set('session_secret', sessionSecret)
+  return `?${p.toString()}`
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
@@ -20,21 +27,27 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function savePlaceRatings(
   sessionId: string,
   ratings: Record<string, PlaceRatingEntry>,
+  sessionSecret?: string | null,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/place-ratings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ ratings }),
+    body: JSON.stringify({
+      ratings,
+      session_secret: sessionSecret || null,
+    }),
   })
   await handleResponse(response)
 }
 
 export async function loadPlaceRatings(
   sessionId: string,
+  sessionSecret?: string | null,
 ): Promise<Record<string, PlaceRatingEntry> | null> {
-  const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/place-ratings`, {
-    headers: { ...getAuthHeaders() },
-  })
+  const response = await fetch(
+    `${API_BASE_URL}/chat/sessions/${sessionId}/place-ratings${secretQuery(sessionSecret)}`,
+    { headers: { ...getAuthHeaders() } },
+  )
   const data = await handleResponse<{ session_id: string; ratings: Record<string, PlaceRatingEntry> | null }>(response)
   return data.ratings
 }
@@ -44,21 +57,27 @@ export async function loadPlaceRatings(
 export async function savePlacesSnapshot(
   sessionId: string,
   places: Record<string, unknown>[],
+  sessionSecret?: string | null,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/places`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ places }),
+    body: JSON.stringify({
+      places,
+      session_secret: sessionSecret || null,
+    }),
   })
   await handleResponse(response)
 }
 
 export async function loadPlacesSnapshot(
   sessionId: string,
+  sessionSecret?: string | null,
 ): Promise<Record<string, unknown>[] | null> {
-  const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/places`, {
-    headers: { ...getAuthHeaders() },
-  })
+  const response = await fetch(
+    `${API_BASE_URL}/chat/sessions/${sessionId}/places${secretQuery(sessionSecret)}`,
+    { headers: { ...getAuthHeaders() } },
+  )
   const data = await handleResponse<{ session_id: string; places: Record<string, unknown>[] | null }>(response)
   return data.places
 }
@@ -68,21 +87,27 @@ export async function loadPlacesSnapshot(
 export async function saveGraphGeoJSON(
   sessionId: string,
   geojson: Record<string, unknown>,
+  sessionSecret?: string | null,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/graph`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ geojson }),
+    body: JSON.stringify({
+      geojson,
+      session_secret: sessionSecret || null,
+    }),
   })
   await handleResponse(response)
 }
 
 export async function loadGraphGeoJSON(
   sessionId: string,
+  sessionSecret?: string | null,
 ): Promise<Record<string, unknown> | null> {
-  const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/graph`, {
-    headers: { ...getAuthHeaders() },
-  })
+  const response = await fetch(
+    `${API_BASE_URL}/chat/sessions/${sessionId}/graph${secretQuery(sessionSecret)}`,
+    { headers: { ...getAuthHeaders() } },
+  )
   const data = await handleResponse<{ session_id: string; geojson: Record<string, unknown> | null }>(response)
   return data.geojson
 }

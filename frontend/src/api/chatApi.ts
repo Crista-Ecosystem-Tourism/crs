@@ -155,6 +155,16 @@ export async function updateSessionTitle(
   await handleResponse(response)
 }
 
+/** Привязать анонимную сессию к текущему пользователю (после регистрации/входа) */
+export async function attachSession(sessionId: string, sessionSecret: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}/attach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ session_secret: sessionSecret }),
+  })
+  await handleResponse(response)
+}
+
 /** Get chat history */
 export async function getHistory(
   sessionId: string,
