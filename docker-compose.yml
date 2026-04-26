@@ -6,10 +6,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       POSTGRES_DB: crs_agent
-    ports:
-      - "5545:5432"
+    expose:
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,8 +22,8 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     restart: unless-stopped
-    ports:
-      - "8010:8000"
+    expose:
+      - "8000"
     volumes:
       - chromadata:/chroma/chroma
     environment:
@@ -32,14 +32,14 @@ services:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 30
 
   # ── Vectorization Backend (RAG) ─────────────────────────
   vectorization:
     build: ./vectorization_backend
     restart: unless-stopped
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     environment:
       EMBEDDING_PROVIDER: huggingface
       EMBEDDING_MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
@@ -70,7 +70,7 @@ services:
     ports:
       - "8002:8002"
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres123@postgres:5432/crs_agent
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/crs_agent
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173}
       RAG_URL: http://vectorization:8001
       ROUTE_URL: http://placesweb:8003

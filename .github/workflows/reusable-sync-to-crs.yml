@@ -1,0 +1,64 @@
+# Вызывается из frontend / ai_agent / vectorization_backend / placesweb_backend / data_backend
+# Секрет: CRS_SYNC_PAT — токен с push в репозиторий `crs` (и clone обоих реп)
+name: Reusable — sync into crs
+
+on:
+  workflow_call:
+    inputs:
+      target_dir:
+        description: 'Подкаталог внутри Crista-Ecosystem-Tourism/crs, например frontend'
+        required: true
+        type: string
+    secrets:
+      CRS_SYNC_PAT:
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout вызывающий репозиторий
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout crs
+        uses: actions/checkout@v4
+        with:
+          repository: Crista-Ecosystem-Tourism/crs
+          token: ${{ secrets.CRS_SYNC_PAT }}
+          path: crs
+          fetch-depth: 0
+
+      - name: Синхронизировать в crs/${{ inputs.target_dir }}
+        run: |
+          set -euo pipefail
+          dest="crs/${{ inputs.target_dir }}"
+          mkdir -p "$dest"
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='venv' \
+            --exclude='.venv' \
+            --exclude='__pycache__' \
+            --exclude='dist' \
+            --exclude='.pytest_cache' \
+            --exclude='*.pyc' \
+            source/ "$dest/"
+
+      - name: Commit и push в crs
+        env:
+          TARGET: ${{ inputs.target_dir }}
+        run: |
+          set -euo pipefail
+          cd crs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Нет изменений — пуш не нужен."
+            exit 0
+          fi
+          git commit -m "chore(sync): update ${TARGET} from ${{ github.repository }} @ ${GITHUB_SHA:0:7}"
+          git push
