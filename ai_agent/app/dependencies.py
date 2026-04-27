@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 import httpx
 
+from app.db.dsn import build_database_url
 from app.core.memory.sqlalchemy_store.store import SqlAlchemyHistoryStore
 from app.core.memory.services import ConversationHistoryService, HistoryPolicy
 from app.core.memory.config import HistoryConfig
@@ -39,7 +40,7 @@ async def lifespan(app: FastAPI):
     global _history_service, _chat_session_service, _user_service, _saved_route_service
     global _llm_model, _preferences_agent, _search_agent, _message_processor
 
-    dsn = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost/db")
+    dsn = build_database_url()
     _engine = create_async_engine(dsn, pool_pre_ping=True, future=True)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 

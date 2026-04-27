@@ -23,13 +23,8 @@ services:
     restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.111.0
+    build: ./otel-collector
     restart: unless-stopped
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    depends_on:
-      - zipkin
 
   # ── ChromaDB ────────────────────────────────────────────
   chromadb:
@@ -41,8 +36,6 @@ services:
       ANONYMIZED_TELEMETRY: "false"
       CHROMA_OPEN_TELEMETRY__ENDPOINT: "http://otel-collector:4317/"
       CHROMA_OPEN_TELEMETRY__SERVICE_NAME: "chromadb"
-    depends_on:
-      - otel-collector
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
@@ -82,8 +75,15 @@ services:
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/crs_agent
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173}
+      # DSN собирается в коде из POSTGRES_* (см. ai_agent/app/db/dsn.py).
+      # Coolify не делает substitution ${VAR} внутри environment: compose, поэтому склеенный
+      # DATABASE_URL ломал asyncpg. Если хочешь явно — задай DATABASE_URL в Coolify целиком.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: crs_agent
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online}
       RAG_URL: http://vectorization:8001
       ROUTE_URL: http://placesweb:8003
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
