@@ -47,10 +47,31 @@ function mapSubtypeToType(subtype?: string | null): Place['type'] {
   return 'attraction'
 }
 
+/**
+ * Собирает абсолютный URL картинки. Иначе браузер запрашивает
+ * /photo-… на **текущем** домене → 404.
+ */
+export function normalizeImageUrl(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined
+  const t = raw.trim()
+  if (t.startsWith('https://') || t.startsWith('http://')) return t
+  if (t.startsWith('//')) return `https:${t}`
+  if (t.startsWith('images.unsplash.com/') || t.startsWith('www.')) return `https://${t.replace(/^www\./, '')}`
+  if (/^photo-[\w-]+/.test(t)) return `https://images.unsplash.com/${t.split('?')[0]}?w=800&q=80`
+  return undefined
+}
+
 /** Map a single BackendPlace to a frontend Place */
 export function mapBackendPlace(bp: BackendPlace, index: number): Place {
   const description = bp.description || bp.page_content || ''
   const addressParts = [bp.city, bp.country].filter(Boolean)
+  const extra = bp as Record<string, unknown>
+  const imageUrl =
+    normalizeImageUrl(extra.imageUrl) ??
+    normalizeImageUrl(extra.image_url) ??
+    normalizeImageUrl(extra.image) ??
+    normalizeImageUrl(extra.photo_url) ??
+    normalizeImageUrl(extra.photo)
 
   return {
     id: bp.id || `backend-place-${index}-${generateId()}`,
@@ -60,6 +81,7 @@ export function mapBackendPlace(bp: BackendPlace, index: number): Place {
     coordinates: [bp.latitude ?? 0, bp.longitude ?? 0],
     rating: bp.rating ?? undefined,
     address: addressParts.length > 0 ? addressParts.join(', ') : undefined,
+    imageUrl,
   }
 }
 

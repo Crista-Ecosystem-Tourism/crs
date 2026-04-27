@@ -10,7 +10,11 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-**Порты (хост):** frontend **3333**, AI **8002**, vectorization **8001**, placesweb **8003**, PostgreSQL **5545**, Chroma **8010**.
+**Порты на хост:** **3333** (фронт), **8002** (API); граф — **только** путь `http://localhost:3333/graph-api/` (nginx → placesweb, **без** :8003). По умолчанию привязка **`127.0.0.1`** (`COMPOSE_LAN_BIND` в `.env`) — с другой машины в сети не открывается. Остальное (RAG, Chroma, pgAdmin, …) — оверлей [docker-compose.dev-ports.yaml](docker-compose.dev-ports.yaml).
+
+Карта URL: [docs/LOCAL-URLS.md](docs/LOCAL-URLS.md) · **прод (Coolify):** [docs/COOLIFY-SUBDOMAINS.md](docs/COOLIFY-SUBDOMAINS.md) (`COMPOSE_LAN_BIND=0.0.0.0` на сервере).
+
+Подключение к БД из pgAdmin и смысл Chroma: [../LOCAL-POSTGRES-AND-CHROMA.md](../LOCAL-POSTGRES-AND-CHROMA.md)
 
 ## Документы в этом репо
 

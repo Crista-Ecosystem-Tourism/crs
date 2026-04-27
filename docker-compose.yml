@@ -8,8 +8,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       POSTGRES_DB: crs_agent
-    expose:
-      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,16 +16,33 @@ services:
       timeout: 3s
       retries: 10
 
+  # ── OpenTelemetry: Collector + Zipkin (трейсы Chroma) ───
+  # https://docs.trychroma.com/guides/deploy/observability
+  zipkin:
+    image: openzipkin/zipkin:latest
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - zipkin
+
   # ── ChromaDB ────────────────────────────────────────────
   chromadb:
     image: chromadb/chroma:latest
     restart: unless-stopped
-    expose:
-      - "8000"
     volumes:
       - chromadata:/chroma/chroma
     environment:
       ANONYMIZED_TELEMETRY: "false"
+      CHROMA_OPEN_TELEMETRY__ENDPOINT: "http://otel-collector:4317/"
+      CHROMA_OPEN_TELEMETRY__SERVICE_NAME: "chromadb"
+    depends_on:
+      - otel-collector
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
@@ -38,8 +53,6 @@ services:
   vectorization:
     build: ./vectorization_backend
     restart: unless-stopped
-    expose:
-      - "8001"
     environment:
       EMBEDDING_PROVIDER: huggingface
       EMBEDDING_MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
@@ -53,11 +66,10 @@ services:
         condition: service_healthy
 
   # ── PlacesWeb Backend (Graph) ───────────────────────────
+  # Без порта на хост: снаружи только через /graph-api/ на фронте (см. frontend/nginx.conf)
   placesweb:
     build: ./placesweb_backend
     restart: unless-stopped
-    ports:
-      - "8003:8003"
     environment:
       NO_PROXY: "*"
       HTTP_PROXY: ""
@@ -68,7 +80,7 @@ services:
     build: ./ai_agent
     restart: unless-stopped
     ports:
-      - "8002:8002"
+      - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/crs_agent
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173}
@@ -83,20 +95,38 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── pgAdmin 4 (веб-UI для PostgreSQL) ───────────────────
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    restart: unless-stopped
+    environment:
+      # .local не принимает pgAdmin 8.14+ (валидация email)
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-me}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
   # ── Frontend ────────────────────────────────────────────
+  # 127.0.0.1 — только с этой машины. Для VPS: COMPOSE_LAN_BIND=0.0.0.0 в .env
   frontend:
     build:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8002}
-        VITE_GRAPH_API_URL: ${VITE_GRAPH_API_URL:-http://localhost:8003}
+        VITE_GRAPH_API_URL: ${VITE_GRAPH_API_URL:-http://localhost:3333/graph-api}
         VITE_USE_MOCKS: "false"
     restart: unless-stopped
     ports:
-      - "3333:80"
+      - "${COMPOSE_LAN_BIND:-127.0.0.1}:3333:80"
     depends_on:
       - ai_agent
+      - placesweb
 
 volumes:
   pgdata:
   chromadata:
+  pgadmin_data:

@@ -1,6 +1,8 @@
 import type { Place } from '@/types'
 
-const GRAPH_API_URL = import.meta.env.VITE_GRAPH_API_URL || 'http://localhost:8003'
+// Граф через nginx: /graph-api/ → placesweb (без отдельного порта на хост)
+const GRAPH_API_URL =
+  import.meta.env.VITE_GRAPH_API_URL || 'http://localhost:3333/graph-api'
 
 export interface GraphBuildResult {
   graph_id: string
