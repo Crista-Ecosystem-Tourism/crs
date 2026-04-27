@@ -22,6 +22,7 @@ docker compose up --build -d
 
 1. В Coolify у приложения со стеком из **`crs`**: **отключи** автодеплой по push из Git (иначе сработают и Git, и workflow).
 2. В GitHub: в секреты репо `crs` добавь `COOLIFY_DEPLOY_WEBHOOK` и `COOLIFY_TOKEN` — по комментариям в workflow.
+3. Если в Actions **401/403**: при создании **API token** в Coolify укажи **IP allowlist** `0.0.0.0/0` или оставь пустым (иначе запросы с раннеров GitHub не проходят). Права токена — **root** (`*`), не read-only.
 
 ## Документы в этом репо
 

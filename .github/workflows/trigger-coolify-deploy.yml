@@ -1,14 +1,11 @@
 # Один деплой в Coolify при лавине коммитов в `crs` (в т.ч. chore(sync) из дочерних репо).
 #
-# Настройка:
-# 1) В Coolify у приложения (стек из `crs`): отключи автодеплой по Git push
-#    (Deployments → иначе будет двойной триггер: Git + этот workflow).
-# 2) Secrets в репозитории `crs` (Settings → Secrets):
-#    - COOLIFY_DEPLOY_WEBHOOK — URL из приложения → Webhooks → Deploy Webhook
-#    - COOLIFY_TOKEN — API token из Coolify (Keys & Tokens), с правом deploy
+# Секреты (Settings → Secrets → Actions):
+# - COOLIFY_DEPLOY_WEBHOOK — полный URL: Webhooks → Deploy Webhook
+# - COOLIFY_TOKEN — API token (Keys & Tokens)
 #
-# Логика: concurrency + cancel-in-progress оставляет только последний запуск на серию
-# быстрых push в main — один деплой по последнему состоянию ветки.
+# 401/403: у токена в Coolify открой IP allowlist: 0.0.0.0/0 (или пусто), иначе GitHub
+# Actions не в whitelist. Права: * (root), не read-only. Без лишнего \n в конце в секрете.
 #
 # См.: https://coolify.io/docs/applications/ci-cd/github/actions
 
@@ -32,10 +29,55 @@ jobs:
           TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${WEBHOOK:-}" ] || [ -z "${TOKEN:-}" ]; then
-            echo "Задай секреты COOLIFY_DEPLOY_WEBHOOK и COOLIFY_TOKEN в crs — пока пропуск."
+          WEBHOOK=$(printf '%s' "${WEBHOOK:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          TOKEN=$(printf '%s' "${TOKEN:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          if [ -z "$WEBHOOK" ]; then
+            echo "Задай COOLIFY_DEPLOY_WEBHOOK в crs — пока пропуск."
             exit 0
           fi
-          curl -fsS --request GET "$WEBHOOK" \
-            --header "Authorization: Bearer $TOKEN"
-          echo "Деплой в Coolify запрошен."
+          http_ok() { [ -n "$1" ] && [ "$1" -ge 200 ] 2>/dev/null && [ "$1" -lt 300 ] 2>/dev/null; }
+
+          set +e
+          OK=0
+          if [ -n "$TOKEN" ]; then
+            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/json" 2>/tmp/coolify.err)
+            if http_ok "$HTTP"; then
+              echo "Деплой: GET + Bearer, HTTP $HTTP"
+              OK=1
+            else
+              echo "GET + Bearer: HTTP $HTTP, ответ: $(head -c 400 /tmp/coolify.rsp 2>/dev/null || true)"
+            fi
+          fi
+          if [ "$OK" -eq 0 ]; then
+            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" -H "Accept: application/json" 2>/dev/null)
+            if http_ok "$HTTP"; then
+              echo "Деплой: GET без Bearer, HTTP $HTTP"
+              OK=1
+            fi
+          fi
+          if [ "$OK" -eq 0 ] && [ -n "$TOKEN" ]; then
+            API_ROOT="${WEBHOOK%%/api/v1/deploy*}"
+            UUID=$(printf '%s' "$WEBHOOK" | sed -n 's/^.*[?&]uuid=\([^&?#]*\).*$/\1/p')
+            if [ -n "$API_ROOT" ] && [ -n "$UUID" ]; then
+              HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request POST "${API_ROOT}/api/v1/deploy" \
+                -H "Authorization: Bearer ${TOKEN}" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json" \
+                -d "{\"uuid\":\"$UUID\",\"force\":false}" 2>/dev/null)
+              if http_ok "$HTTP"; then
+                echo "Деплой: POST + JSON, HTTP $HTTP"
+                OK=1
+              else
+                echo "POST: HTTP $HTTP, ответ: $(head -c 400 /tmp/coolify.rsp 2>/dev/null || true)"
+              fi
+            fi
+          fi
+          set -e
+          if [ "$OK" -eq 1 ]; then
+            echo "Деплой в Coolify запрошен."
+            exit 0
+          fi
+          echo "::error::Coolify не ответил успехом. Проверь: 1) у API-токена в Coolify IP allowlist 0.0.0.0/0; 2) права *; 3) COOLIFY_DEPLOY_WEBHOOK — полный URL; 4) в секретах нет лишнего переноса строки в токене."
+          exit 1
