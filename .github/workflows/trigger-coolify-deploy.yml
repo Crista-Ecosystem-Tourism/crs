@@ -1,0 +1,41 @@
+# Один деплой в Coolify при лавине коммитов в `crs` (в т.ч. chore(sync) из дочерних репо).
+#
+# Настройка:
+# 1) В Coolify у приложения (стек из `crs`): отключи автодеплой по Git push
+#    (Deployments → иначе будет двойной триггер: Git + этот workflow).
+# 2) Secrets в репозитории `crs` (Settings → Secrets):
+#    - COOLIFY_DEPLOY_WEBHOOK — URL из приложения → Webhooks → Deploy Webhook
+#    - COOLIFY_TOKEN — API token из Coolify (Keys & Tokens), с правом deploy
+#
+# Логика: concurrency + cancel-in-progress оставляет только последний запуск на серию
+# быстрых push в main — один деплой по последнему состоянию ветки.
+#
+# См.: https://coolify.io/docs/applications/ci-cd/github/actions
+
+name: Coolify — один деплой (debounce)
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: coolify-crs-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Триггер Coolify
+        env:
+          WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK:-}" ] || [ -z "${TOKEN:-}" ]; then
+            echo "Задай секреты COOLIFY_DEPLOY_WEBHOOK и COOLIFY_TOKEN в crs — пока пропуск."
+            exit 0
+          fi
+          curl -fsS --request GET "$WEBHOOK" \
+            --header "Authorization: Bearer $TOKEN"
+          echo "Деплой в Coolify запрошен."

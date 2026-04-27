@@ -16,6 +16,13 @@ docker compose up --build -d
 
 Подключение к БД из pgAdmin и смысл Chroma: [../LOCAL-POSTGRES-AND-CHROMA.md](../LOCAL-POSTGRES-AND-CHROMA.md)
 
+## Coolify: один деплой при лавине sync
+
+Пуши в `frontend` / `ai_agent` / … → Actions заливают копии в `crs` (несколько коммитов). Чтобы в Coolify уходил **один** деплой по **последнему** `main`, в `crs` есть workflow [`.github/workflows/trigger-coolify-deploy.yml`](.github/workflows/trigger-coolify-deploy.yml) (отмена лишних запусков через `concurrency`).
+
+1. В Coolify у приложения со стеком из **`crs`**: **отключи** автодеплой по push из Git (иначе сработают и Git, и workflow).
+2. В GitHub: в секреты репо `crs` добавь `COOLIFY_DEPLOY_WEBHOOK` и `COOLIFY_TOKEN` — по комментариям в workflow.
+
 ## Документы в этом репо
 
 - [CI/CD: синк из 5 репо в `crs` и Coolify](docs/CI-CD-SYNC.md)
