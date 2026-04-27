@@ -42,8 +42,8 @@ const locations = [
   { title: 'Исландия', loc: 'Исландия', type: 'nature', image: 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=600&q=80' },
   { title: 'Агра', loc: 'Индия', type: 'culture', image: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=600&q=80' },
   { title: 'Шефшауэн', loc: 'Марокко', type: 'city', image: 'https://images.unsplash.com/photo-1504109586057-7a2ae83d1338?w=600&q=80' },
-  { title: 'Осака', loc: 'Япония', type: 'culture', image: 'https://images.unsplash.com/photo-1590559899731-a3820e015c6e?w=600&q=80' },
-  { title: 'Бавария', loc: 'Германия', type: 'nature', image: 'https://images.unsplash.com/photo-1506905816722-4fd147cb0e38?w=600&q=80' },
+  { title: 'Осака', loc: 'Япония', type: 'culture', image: 'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=600&q=80' },
+  { title: 'Бавария', loc: 'Германия', type: 'nature', image: 'https://images.unsplash.com/photo-1572455024125-d6dbcdcc9760?w=600&q=80' },
   { title: 'Барселона', loc: 'Испания', type: 'city', image: 'https://images.unsplash.com/photo-1562883676-8c7feb83f09b?w=600&q=80' },
   { title: 'Прага', loc: 'Чехия', type: 'city', image: 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=600&q=80' },
   { title: 'Рио-де-Жанейро', loc: 'Бразилия', type: 'nature', image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=600&q=80' },
@@ -119,6 +119,12 @@ function InfiniteColumn({
               alt={item.title}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
               loading="lazy"
+              onError={(e: { currentTarget: HTMLImageElement }) => {
+                const img = e.currentTarget
+                if (img.dataset.fallback) return
+                img.dataset.fallback = '1'
+                img.src = `https://picsum.photos/seed/${encodeURIComponent(item.title)}/600/${item.height}`
+              }}
             />
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
