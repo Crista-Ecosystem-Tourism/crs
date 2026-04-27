@@ -20,7 +20,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", build_database_url())
+_dsn = build_database_url()
+config.set_main_option("sqlalchemy.url", _dsn.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
