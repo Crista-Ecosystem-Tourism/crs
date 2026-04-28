@@ -136,9 +136,9 @@ export function TravelMap() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[1000] flex items-center justify-center bg-background"
+            className="absolute inset-0 z-[1000] flex items-center justify-center bg-background/45 pointer-events-none dark:bg-background/55"
           >
-            <div className="text-center p-6 max-w-md">
+            <div className="text-center p-6 max-w-md rounded-2xl border border-border bg-card/95 shadow-lg backdrop-blur-sm pointer-events-auto">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
                 <MapPin className="w-8 h-8 text-primary" />
               </div>
