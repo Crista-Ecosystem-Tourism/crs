@@ -11,7 +11,6 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 load_dotenv()
 
-from app.db.dsn import build_database_url
 from app.db.models.base import Base
 from app.db.models import chat, auth, saved_route
 
@@ -20,8 +19,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-_dsn = build_database_url()
-config.set_main_option("sqlalchemy.url", _dsn.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
 
 target_metadata = Base.metadata
 

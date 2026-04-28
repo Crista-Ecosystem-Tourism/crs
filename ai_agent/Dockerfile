@@ -19,7 +19,4 @@ COPY . .
 
 EXPOSE 8002
 
-# Миграции не должны валить процесс: иначе Traefik не видит backend → 502.
-# Если alembic упал (DB не готова, конфликт версий) — лог, и стартуем uvicorn,
-# чтобы /health отвечал и был виден Coolify-прокси.
-CMD ["sh", "-c", "alembic upgrade head || echo '[startup] alembic failed, продолжаю запуск'; exec uvicorn app.main:app --host 0.0.0.0 --port 8002"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8002"]
