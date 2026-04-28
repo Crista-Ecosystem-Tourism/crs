@@ -2,7 +2,8 @@ import type { SuitcaseExpense, SuitcaseGoal, SuitcaseTrip } from '@/types/suitca
 import { ApiError } from '@/api/chatApi'
 import { getAuthHeaders } from '@/api/authApi'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const SUITCASE_API_BASE_URL =
+  import.meta.env.VITE_SUITCASE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -115,7 +116,7 @@ function tripPatchToApi(patch: Partial<SuitcaseTrip>): Record<string, unknown> {
 }
 
 export async function fetchSuitcaseWorkspace(): Promise<ApiSuitcaseWorkspace> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/workspace`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/workspace`, {
     headers: { Accept: 'application/json', ...getAuthHeaders() },
   })
   return parseResponse<ApiSuitcaseWorkspace>(response)
@@ -134,7 +135,7 @@ export async function createSuitcaseTrip(payload: Omit<SuitcaseTrip, 'id' | 'cre
     photos: payload.photos,
     is_archived: payload.isArchived ?? false,
   }
-  const response = await fetch(`${API_BASE_URL}/suitcase/trips`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(body),
@@ -143,7 +144,7 @@ export async function createSuitcaseTrip(payload: Omit<SuitcaseTrip, 'id' | 'cre
 }
 
 export async function patchSuitcaseTrip(tripId: string, patch: Partial<SuitcaseTrip>): Promise<ApiSuitcaseTripRow> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(tripPatchToApi(patch)),
@@ -152,7 +153,7 @@ export async function patchSuitcaseTrip(tripId: string, patch: Partial<SuitcaseT
 }
 
 export async function deleteSuitcaseTrip(tripId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json', ...getAuthHeaders() },
   })
@@ -164,7 +165,7 @@ export async function createSuitcaseExpense(
   payload: Omit<SuitcaseExpense, 'id'>
 ): Promise<ApiSuitcaseExpenseRow> {
   const response = await fetch(
-    `${API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/expenses`,
+    `${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/expenses`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
@@ -181,7 +182,7 @@ export async function createSuitcaseExpense(
 }
 
 export async function deleteSuitcaseExpense(expenseId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/expenses/${encodeURIComponent(expenseId)}`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/expenses/${encodeURIComponent(expenseId)}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json', ...getAuthHeaders() },
   })
@@ -189,7 +190,7 @@ export async function deleteSuitcaseExpense(expenseId: string): Promise<void> {
 }
 
 export async function patchSuitcaseGoal(goalId: string, patch: { current?: number; title?: string; total?: number; color?: string }): Promise<ApiSuitcaseGoalRow> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/goals/${encodeURIComponent(goalId)}`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/goals/${encodeURIComponent(goalId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(patch),
@@ -198,7 +199,7 @@ export async function patchSuitcaseGoal(goalId: string, patch: { current?: numbe
 }
 
 export async function createSuitcaseGoal(payload: Omit<SuitcaseGoal, 'id'>): Promise<ApiSuitcaseGoalRow> {
-  const response = await fetch(`${API_BASE_URL}/suitcase/goals`, {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/goals`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
