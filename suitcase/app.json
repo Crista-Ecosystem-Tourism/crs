@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Suitcase",
+    "slug": "suitcase",
+    "scheme": "suitcase",
+    "jsEngine": "jsc",
+    "newArchEnabled": true,
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "online.crista.suitcase",
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)$(CFBundleIdentifier)"
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAgYFJS60ZmSmhCUaKhR7xzFkcIWtey1cM"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "online.crista.suitcase",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAgYFJS60ZmSmhCUaKhR7xzFkcIWtey1cM"
+        }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "99d6a38a-4313-4d50-bfc1-ce05491ff628"
+      },
+      "apiUrl": "https://api.crista.online/suitcase-api"
+    },
+    "owner": "kiruxa",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Suitcase to use your location."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
