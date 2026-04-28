@@ -119,6 +119,48 @@ services:
       retries: 6
       start_period: 60s
 
+  # ── Data Backend (ETL + наполнение Chroma) ─────────────
+  data_backend:
+    build: ./data_backend
+    restart: unless-stopped
+    ports:
+      - "${COMPOSE_LAN_BIND:-127.0.0.1}:8004:8004"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: crs_agent
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
+      VECTORIZATION_URL: http://vectorization:8001
+      DATA_SEED_DIR: /app/data/seed
+      DATA_AUTO_BOOTSTRAP: ${DATA_AUTO_BOOTSTRAP:-false}
+      DATA_DISABLE_CRON: ${DATA_DISABLE_CRON:-false}
+      DATA_WEEKLY_CRON: ${DATA_WEEKLY_CRON:-0 3 * * 0}
+      DATA_REINDEX_CRON: ${DATA_REINDEX_CRON:-30 4 * * *}
+      DATA_ADMIN_TOKEN: ${DATA_ADMIN_TOKEN:-}
+      OVERPASS_ENDPOINT: ${OVERPASS_ENDPOINT:-https://overpass-api.de/api/interpreter}
+      WIKIDATA_ENDPOINT: ${WIKIDATA_ENDPOINT:-https://query.wikidata.org/sparql}
+      KUDAGO_ENDPOINT: ${KUDAGO_ENDPOINT:-https://kudago.com/public-api/v1.4}
+      DATA_USER_AGENT: ${DATA_USER_AGENT:-CristaDataBackend/1.0 (+https://crista.online; contact@crista.online)}
+      NO_PROXY: "*"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+    volumes:
+      - data_seed:/app/data/seed
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vectorization:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8004/health\", timeout=3)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
   # ── pgAdmin 4 (веб-UI для PostgreSQL) ───────────────────
   pgadmin:
     image: dpage/pgadmin4:8.14
@@ -151,8 +193,10 @@ services:
       - ai_agent
       - placesweb
       - suitcase_backend
+      - data_backend
 
 volumes:
   pgdata:
   chromadata:
   pgadmin_data:
+  data_seed:

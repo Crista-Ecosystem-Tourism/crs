@@ -1,0 +1,15 @@
+# Пуш в main → копия кода в репо `crs` (подпапка frontend) → Coolify (webhook) может пересобрать стек
+name: Sync to crs
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    uses: Crista-Ecosystem-Tourism/crs/.github/workflows/reusable-sync-to-crs.yml@main
+    with:
+      target_dir: frontend
+    secrets:
+      CRS_SYNC_PAT: ${{ secrets.CRS_SYNC_PAT }}
