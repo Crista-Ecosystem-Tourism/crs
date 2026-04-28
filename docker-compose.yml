@@ -16,16 +16,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── OpenTelemetry: Collector + Zipkin (трейсы Chroma) ───
-  # https://docs.trychroma.com/guides/deploy/observability
-  zipkin:
-    image: openzipkin/zipkin:latest
-    restart: unless-stopped
-
-  otel-collector:
-    build: ./otel-collector
-    restart: unless-stopped
-
   # ── ChromaDB ────────────────────────────────────────────
   chromadb:
     image: chromadb/chroma:latest
@@ -34,12 +24,6 @@ services:
       - chromadata:/chroma/chroma
     environment:
       ANONYMIZED_TELEMETRY: "false"
-      CHROMA_OPEN_TELEMETRY__ENDPOINT: "http://otel-collector:4317/"
-      CHROMA_OPEN_TELEMETRY__SERVICE_NAME: "chromadb"
-      # Chroma официально документирует только traces; Rust SDK всё равно поднимает
-      # metrics pipeline → без этого OTLP на коллекторе сыпется unknown MetricsService.
-      OTEL_METRICS_EXPORTER: "none"
-      OTEL_LOGS_EXPORTER: "none"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
@@ -87,7 +71,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       POSTGRES_DB: crs_agent
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
       RAG_URL: http://vectorization:8001
       ROUTE_URL: http://placesweb:8003
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
@@ -126,8 +110,8 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8002}
-        VITE_GRAPH_API_URL: ${VITE_GRAPH_API_URL:-http://localhost:3333/graph-api}
+        VITE_API_URL: /api
+        VITE_GRAPH_API_URL: /graph-api
         VITE_USE_MOCKS: "false"
     restart: unless-stopped
     ports:

@@ -1,4 +1,4 @@
-# Необязательный оверлей: порты на хост для отладки (RAG, граф, Chroma, БД, Zipkin, pgAdmin).
+# Необязательный оверлей: порты на хост для отладки (RAG, граф, Chroma, БД, pgAdmin).
 # Использование: docker compose -f docker-compose.yml -f docker-compose.dev-ports.yaml up -d
 # Хост привязки: COMPOSE_LAN_BIND (по умолчанию 127.0.0.1) — см. docker-compose.yml
 
@@ -6,10 +6,6 @@ services:
   postgres:
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:5545:5432"
-
-  zipkin:
-    ports:
-      - "${COMPOSE_LAN_BIND:-127.0.0.1}:9411:9411"
 
   chromadb:
     ports:

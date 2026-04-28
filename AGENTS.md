@@ -1,7 +1,8 @@
-# Crista Ecosystem — правила для агентов (Claude Code, Cursor и др.)
+# Crista Ecosystem — единое правило для ИИ-агентов
 
 ## Монорепа `crs` и канонические репо
 
+- Этот файл — единственный источник правил для Cursor, Claude Code, Antigravity и прочих агентов.
 - Рядом с `crs/` лежат **отдельные** репозитории: `frontend`, `ai_agent`, `placesweb_backend`, `vectorization_backend`, `data_backend`, `suitcase`, …
 - Внутри `crs/` — **копии** части этого кода для Docker Compose. **Не дублируй** одни и те же правки и в каноническом репо, и в `crs/<сервис>/` в одной задаче.
 
@@ -19,8 +20,4 @@
 
 ## Исключение
 
-Запросы про **инфраструктуру монорепы** (`docker-compose.yml`, `otel-collector`, nginx в `crs/frontend`, корень воркспейса) — правь **в `crs/`**, commit и push в репозиторий **`crs`**.
-
-## Cursor
-
-Детальное правило в этом репозитории: [`.cursor/rules/ecosystem-crs-sync.mdc`](.cursor/rules/ecosystem-crs-sync.mdc) (подхватывается, когда в воркспейсе открыта папка `crs`).
+Запросы про **инфраструктуру монорепы** (`docker-compose.yml`, nginx в `crs/frontend`, GitHub Actions sync, корень воркспейса) — правь **в `crs/`**, commit и push в репозиторий **`crs`**.

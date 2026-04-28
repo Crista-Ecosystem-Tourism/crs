@@ -18,18 +18,6 @@ COPY requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
-# Прогреваем embedding-модель в build-слой: она кэшируется в /root/.cache/huggingface
-# и переиспользуется между деплоями (экономит ~1–2 минуты на каждом старте контейнера и
-# страхует от сбоев HF в момент cold start). Имя должно совпадать с EMBEDDING_MODEL_NAME
-# в docker-compose.yml.
-ARG EMBEDDING_MODEL_NAME=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL_NAME}')" \
- && mkdir -p /opt/hf-cache \
- && cp -a /root/.cache/huggingface/. /opt/hf-cache/
-ENV HF_HOME=/opt/hf-cache \
-    TRANSFORMERS_CACHE=/opt/hf-cache
-
 COPY . .
 
 EXPOSE 8001
