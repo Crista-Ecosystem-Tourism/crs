@@ -79,7 +79,7 @@ services:
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
     environment:
-      # DSN собирается в коде из POSTGRES_* (см. ai_agent/app/db/dsn.py).
+      # DSN: DATABASE_URL или сборка из POSTGRES_* (app/db/dsn.py).
       # Coolify не делает substitution ${VAR} внутри environment: compose, поэтому склеенный
       # DATABASE_URL ломал asyncpg. Если хочешь явно — задай DATABASE_URL в Coolify целиком.
       POSTGRES_HOST: postgres
