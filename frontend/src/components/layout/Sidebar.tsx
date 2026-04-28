@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Menu, Moon, Sun, MessageSquare, Search, Map, Sparkles, Database, User, ChevronLeft, Info, ChevronRight, Settings, HelpCircle, LogOut } from 'lucide-react'
+import { Plus, X, Menu, Moon, Sun, MessageSquare, Search, Map, Sparkles, Database, Luggage, User, ChevronLeft, Info, ChevronRight, Settings, HelpCircle, LogOut } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -16,6 +16,7 @@ const menuItems = [
   { icon: Map, label: 'Мои маршруты', id: 'saved' },
   { icon: Sparkles, label: 'Вдохновение', id: 'inspiration' },
   { icon: Database, label: 'Данные', id: 'data' },
+  { icon: Luggage, label: 'Мой чемодан', id: 'suitcase' },
 ]
 
 export function Sidebar() {
@@ -30,10 +31,21 @@ export function Sidebar() {
     logout,
     goHome,
     setMainView,
+    mainView,
+    currentChatId,
+    sidebarCollapsed: isCollapsed,
+    setSidebarCollapsed: setIsCollapsed,
   } = useApp()
 
-  const [activeMenu, setActiveMenu] = useState('explore')
-  const { sidebarCollapsed: isCollapsed, setSidebarCollapsed: setIsCollapsed } = useApp()
+  const activeMenuId = useMemo(() => {
+    if (currentChatId) return 'chats'
+    if (mainView === 'chatList') return 'chats'
+    if (mainView === 'inspiration') return 'inspiration'
+    if (mainView === 'saved') return 'saved'
+    if (mainView === 'data') return 'data'
+    if (mainView === 'suitcase') return 'suitcase'
+    return 'explore'
+  }, [currentChatId, mainView])
 
   const sidebarContent = (collapsed: boolean) => (
     <div className="h-full flex flex-col bg-surface border-r border-border transition-colors">
@@ -77,7 +89,6 @@ export function Sidebar() {
           <button
             key={item.id}
             onClick={() => {
-              setActiveMenu(item.id)
               if (collapsed) setIsCollapsed(false)
               if (item.id === 'explore') {
                 goHome()
@@ -94,6 +105,9 @@ export function Sidebar() {
               } else if (item.id === 'data') {
                 goHome()
                 setMainView('data')
+              } else if (item.id === 'suitcase') {
+                goHome()
+                setMainView('suitcase')
               } else if ('path' in item && item.path) {
                 navigate(item.path)
               }
@@ -102,7 +116,7 @@ export function Sidebar() {
             className={cn(
               'w-full flex items-center rounded-lg text-sm font-medium transition-colors',
               collapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5',
-              activeMenu === item.id
+              activeMenuId === item.id
                 ? 'bg-surface-light text-text'
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text'
             )}

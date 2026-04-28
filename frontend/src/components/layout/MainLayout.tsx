@@ -9,6 +9,7 @@ import { PlaceDetailPanel } from '@/components/map/PlaceDetailPanel'
 import { InspirationBoard } from '@/components/home/InspirationBoard'
 import { SavedRoutesPanel } from '@/components/routes/SavedRoutesPanel'
 import { DataPanel } from '@/components/data/DataPanel'
+import { SuitcasePanel } from '@/components/suitcase/SuitcasePanel'
 import { HomeInput } from '@/components/home/HomeInput'
 import { AuthModal } from '@/components/modals/AuthModal'
 import { SubscriptionModal } from '@/components/modals/SubscriptionModal'
@@ -111,6 +112,17 @@ export function MainLayout() {
                 className="w-full h-full"
               >
                 <SavedRoutesPanel onBack={() => setMainView('home')} />
+              </motion.div>
+            ) : isHome && mainView === 'suitcase' ? (
+              <motion.div
+                key="suitcase"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <SuitcasePanel onBack={() => setMainView('home')} />
               </motion.div>
             ) : isHome ? (
               <motion.div

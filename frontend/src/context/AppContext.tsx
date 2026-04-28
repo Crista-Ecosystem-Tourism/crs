@@ -186,8 +186,8 @@ interface AppContextType {
 
   // Navigation
   goHome: () => void
-  mainView: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data'
-  setMainView: (view: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data') => void
+  mainView: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase'
+  setMainView: (view: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase') => void
   
   // Sidebar
   sidebarOpen: boolean
@@ -307,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Main view (when no chat is open)
-  const [mainView, setMainView] = useState<'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data'>('home')
+  const [mainView, setMainView] = useState<'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase'>('home')
 
   // Auth
   const [authLoading, setAuthLoading] = useState(false)

@@ -12,14 +12,11 @@ RUN --mount=type=cache,target=/root/.npm \
 
 COPY . .
 
-# В Docker/Coolify фронт всегда ходит через nginx того же контейнера:
-# /api -> ai_agent, /graph-api -> placesweb. Это убирает CORS и не зависит от
-# старых Build Variables в Coolify (например https://api.crista.online).
-ARG VITE_API_URL=/api
-ARG VITE_GRAPH_API_URL=/graph-api
+ARG VITE_API_URL=http://localhost:8002
+ARG VITE_GRAPH_API_URL=http://localhost:8003
 ARG VITE_USE_MOCKS=false
-ENV VITE_API_URL=/api \
-    VITE_GRAPH_API_URL=/graph-api \
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_GRAPH_API_URL=$VITE_GRAPH_API_URL \
     VITE_USE_MOCKS=$VITE_USE_MOCKS
 
 RUN npm run build
