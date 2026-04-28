@@ -57,9 +57,12 @@
       })();
     </script>
 
-    <!-- Travelpayouts: глобальный скрипт проекта (кабинет Travelpayouts) -->
+    <!-- Travelpayouts: грузим только в production, чтобы не шуметь 403 на локалке/preview -->
     <script>
       (function () {
+        var host = window.location.hostname;
+        var isProd = host === "crista.online" || host.endsWith(".crista.online");
+        if (!isProd) return;
         var script = document.createElement("script");
         script.async = 1;
         script.src = "https://emrld.ltd/NTIzMTI2.js?t=523126";
