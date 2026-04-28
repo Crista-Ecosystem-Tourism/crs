@@ -36,6 +36,10 @@ services:
       ANONYMIZED_TELEMETRY: "false"
       CHROMA_OPEN_TELEMETRY__ENDPOINT: "http://otel-collector:4317/"
       CHROMA_OPEN_TELEMETRY__SERVICE_NAME: "chromadb"
+      # Chroma официально документирует только traces; Rust SDK всё равно поднимает
+      # metrics pipeline → без этого OTLP на коллекторе сыпется unknown MetricsService.
+      OTEL_METRICS_EXPORTER: "none"
+      OTEL_LOGS_EXPORTER: "none"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
       interval: 5s
