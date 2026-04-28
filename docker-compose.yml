@@ -89,6 +89,36 @@ services:
       retries: 6
       start_period: 60s
 
+  # ── Suitcase Backend (мобильное приложение + веб-раздел "Мой чемодан") ──
+  suitcase_backend:
+    build: ./suitcase/backend
+    restart: unless-stopped
+    ports:
+      - "${COMPOSE_LAN_BIND:-127.0.0.1}:8010:8010"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: crs_agent
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
+      JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-60}
+      NO_PROXY: "*"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+    depends_on:
+      ai_agent:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8010/health\", timeout=3)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
   # ── pgAdmin 4 (веб-UI для PostgreSQL) ───────────────────
   pgadmin:
     image: dpage/pgadmin4:8.14
@@ -112,6 +142,7 @@ services:
       args:
         VITE_API_URL: /api
         VITE_GRAPH_API_URL: /graph-api
+        VITE_SUITCASE_API_URL: /suitcase-api
         VITE_USE_MOCKS: "false"
     restart: unless-stopped
     ports:
@@ -119,6 +150,7 @@ services:
     depends_on:
       - ai_agent
       - placesweb
+      - suitcase_backend
 
 volumes:
   pgdata:
