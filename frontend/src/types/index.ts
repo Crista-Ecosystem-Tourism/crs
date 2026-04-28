@@ -205,3 +205,16 @@ export interface SessionState {
   sessionId: string
   sessionSecret: string
 }
+
+/** Экраны главной области без открытого чата */
+export type MainView =
+  | 'home'
+  | 'chatList'
+  | 'inspiration'
+  | 'saved'
+  | 'trips'
+  | 'data'
+  | 'suitcase'
+  | 'community'
+  | 'placeByPhoto'
+  | 'toursGlamping'

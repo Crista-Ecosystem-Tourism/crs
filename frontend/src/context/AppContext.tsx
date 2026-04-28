@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react'
-import { ChatMessage, Place, User, AuthState, SubscriptionPlan, ModalType, SavedRoute, SessionState, BackendRouteMetadata, BackendPreferences, SuggestedReplyGroup } from '@/types'
+import { ChatMessage, Place, User, AuthState, SubscriptionPlan, ModalType, SavedRoute, SessionState, BackendRouteMetadata, BackendPreferences, SuggestedReplyGroup, MainView } from '@/types'
 import { welcomeMessage, generateAIResponse, createUserMessage } from '@/mocks/chat'
 import { getPlacesByCity, getCityCenter, getCityName, parisPlaces, georgiaPlaces, baliPlaces, altaiPlaces, kyotoPlaces, spbPlaces, kenyaPlaces } from '@/mocks/places'
 import { delay, generateId } from '@/lib/utils'
@@ -186,8 +186,8 @@ interface AppContextType {
 
   // Navigation
   goHome: () => void
-  mainView: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase'
-  setMainView: (view: 'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase') => void
+  mainView: MainView
+  setMainView: (view: MainView) => void
   
   // Sidebar
   sidebarOpen: boolean
@@ -307,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Main view (when no chat is open)
-  const [mainView, setMainView] = useState<'home' | 'chatList' | 'inspiration' | 'saved' | 'trips' | 'data' | 'suitcase'>('home')
+  const [mainView, setMainView] = useState<MainView>('home')
 
   // Auth
   const [authLoading, setAuthLoading] = useState(false)

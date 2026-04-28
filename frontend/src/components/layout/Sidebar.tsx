@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Menu, Moon, Sun, MessageSquare, Search, Map, Sparkles, Database, Luggage, User, ChevronLeft, Info, ChevronRight, Settings, HelpCircle, LogOut } from 'lucide-react'
+import { Plus, X, Menu, Moon, Sun, MessageSquare, Search, Map, Sparkles, BookOpen, Luggage, User, ChevronLeft, Info, ChevronRight, Settings, HelpCircle, LogOut, Users, ImagePlus, Tent } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -14,8 +14,10 @@ const menuItems = [
   { icon: Search, label: 'Главная', id: 'explore', path: '/' },
   { icon: MessageSquare, label: 'Чаты', id: 'chats' },
   { icon: Map, label: 'Мои маршруты', id: 'saved' },
-  { icon: Sparkles, label: 'Вдохновение', id: 'inspiration' },
-  { icon: Database, label: 'Данные', id: 'data' },
+  { icon: Users, label: 'Сообщество', id: 'community' },
+  { icon: ImagePlus, label: 'Место по фото', id: 'placeByPhoto' },
+  { icon: Tent, label: 'Туры и глемпинг', id: 'toursGlamping' },
+  { icon: BookOpen, label: 'CristaWiki', id: 'data' },
   { icon: Luggage, label: 'Мой чемодан', id: 'suitcase' },
 ]
 
@@ -40,8 +42,11 @@ export function Sidebar() {
   const activeMenuId = useMemo(() => {
     if (currentChatId) return 'chats'
     if (mainView === 'chatList') return 'chats'
-    if (mainView === 'inspiration') return 'inspiration'
+    if (mainView === 'inspiration') return 'saved'
     if (mainView === 'saved') return 'saved'
+    if (mainView === 'community') return 'community'
+    if (mainView === 'placeByPhoto') return 'placeByPhoto'
+    if (mainView === 'toursGlamping') return 'toursGlamping'
     if (mainView === 'data') return 'data'
     if (mainView === 'suitcase') return 'suitcase'
     return 'explore'
@@ -96,12 +101,18 @@ export function Sidebar() {
               } else if (item.id === 'chats') {
                 goHome()
                 setMainView('chatList')
-              } else if (item.id === 'inspiration') {
-                goHome()
-                setMainView('inspiration')
               } else if (item.id === 'saved') {
                 goHome()
                 setMainView('saved')
+              } else if (item.id === 'community') {
+                goHome()
+                setMainView('community')
+              } else if (item.id === 'placeByPhoto') {
+                goHome()
+                setMainView('placeByPhoto')
+              } else if (item.id === 'toursGlamping') {
+                goHome()
+                setMainView('toursGlamping')
               } else if (item.id === 'data') {
                 goHome()
                 setMainView('data')

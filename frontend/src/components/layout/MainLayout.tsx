@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Compass } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { MobileTabBar } from './MobileTabBar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
@@ -10,6 +9,10 @@ import { InspirationBoard } from '@/components/home/InspirationBoard'
 import { SavedRoutesPanel } from '@/components/routes/SavedRoutesPanel'
 import { DataPanel } from '@/components/data/DataPanel'
 import { SuitcasePanel } from '@/components/suitcase/SuitcasePanel'
+import { InspirationPanel } from '@/components/inspiration/InspirationPanel'
+import { CommunityPanel } from '@/components/community/CommunityPanel'
+import { PlaceByPhotoPanel } from '@/components/place/PlaceByPhotoPanel'
+import { ToursGlampingPanel } from '@/components/tours/ToursGlampingPanel'
 import { HomeInput } from '@/components/home/HomeInput'
 import { AuthModal } from '@/components/modals/AuthModal'
 import { SubscriptionModal } from '@/components/modals/SubscriptionModal'
@@ -65,31 +68,13 @@ export function MainLayout() {
             ) : isHome && mainView === 'inspiration' ? (
               <motion.div
                 key="inspiration"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="w-full h-full flex items-center justify-center"
+                className="w-full h-full"
               >
-                <div className="text-center max-w-md px-6">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                    <Sparkles className="w-8 h-8 text-primary" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-text mb-3">Вдохновение</h2>
-                  <p className="text-text-secondary leading-relaxed mb-4">
-                    В следующей версии мы будем автоматически предлагать маршруты на основе ваших предпочтений и истории путешествий.
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-sm text-text-muted">
-                    <Compass className="w-4 h-4" />
-                    <span>Скоро — персональные рекомендации</span>
-                  </div>
-                  <button
-                    onClick={() => setMainView('home')}
-                    className="mt-6 px-4 py-2 rounded-lg text-sm text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    Вернуться на главную
-                  </button>
-                </div>
+                <InspirationPanel onBack={() => setMainView('saved')} />
               </motion.div>
             ) : isHome && mainView === 'data' ? (
               <motion.div
@@ -101,6 +86,39 @@ export function MainLayout() {
                 className="w-full h-full"
               >
                 <DataPanel onBack={() => setMainView('home')} />
+              </motion.div>
+            ) : isHome && mainView === 'community' ? (
+              <motion.div
+                key="community"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <CommunityPanel onBack={() => setMainView('home')} />
+              </motion.div>
+            ) : isHome && mainView === 'placeByPhoto' ? (
+              <motion.div
+                key="place-by-photo"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <PlaceByPhotoPanel onBack={() => setMainView('home')} />
+              </motion.div>
+            ) : isHome && mainView === 'toursGlamping' ? (
+              <motion.div
+                key="tours-glamping"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <ToursGlampingPanel onBack={() => setMainView('home')} />
               </motion.div>
             ) : isHome && mainView === 'saved' ? (
               <motion.div
