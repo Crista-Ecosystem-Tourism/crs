@@ -65,20 +65,21 @@ curl -sS http://localhost:8004/health
 
 ## Bootstrap
 
-Если БД пуста и `DATA_AUTO_BOOTSTRAP=true` — при старте контейнер сам прогонит
-`run_all_sources()` и переиндексирует Chroma.
+`DATA_AUTO_BOOTSTRAP=true` (дефолт) — при первом старте, если БД пустая,
+контейнер сам прогонит `run_all_sources()` и переиндексирует Chroma. После
+успеха повторный старт уже ничего не делает (идемпотентно).
 
-Ручной запуск:
+Ручной запуск (если выключал auto):
 
 ```bash
 curl -X POST -H "Authorization: Bearer $DATA_ADMIN_TOKEN" \
   https://api.crista.online/data-api/bootstrap
 ```
 
-## Cron
+## Cron (всё ежедневно)
 
-* Воскресенье 03:00 — полный прогон всех источников (`DATA_WEEKLY_CRON`).
-* Ежедневно 04:30 — переиндексация только новых записей (`DATA_REINDEX_CRON`).
+* `DATA_WEEKLY_CRON=0 3 * * *` — каждый день в 03:00 полный прогон источников.
+* `DATA_REINDEX_CRON=30 4 * * *` — каждый день в 04:30 переиндексация Chroma.
 * Отключить можно `DATA_DISABLE_CRON=true`.
 
 ## CI/CD

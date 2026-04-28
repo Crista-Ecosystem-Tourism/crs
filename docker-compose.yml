@@ -135,9 +135,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
       VECTORIZATION_URL: http://vectorization:8001
       DATA_SEED_DIR: /app/data/seed
-      DATA_AUTO_BOOTSTRAP: ${DATA_AUTO_BOOTSTRAP:-false}
+      DATA_AUTO_BOOTSTRAP: ${DATA_AUTO_BOOTSTRAP:-true}
       DATA_DISABLE_CRON: ${DATA_DISABLE_CRON:-false}
-      DATA_WEEKLY_CRON: ${DATA_WEEKLY_CRON:-0 3 * * 0}
+      DATA_WEEKLY_CRON: ${DATA_WEEKLY_CRON:-0 3 * * *}
       DATA_REINDEX_CRON: ${DATA_REINDEX_CRON:-30 4 * * *}
       DATA_ADMIN_TOKEN: ${DATA_ADMIN_TOKEN:-}
       OVERPASS_ENDPOINT: ${OVERPASS_ENDPOINT:-https://overpass-api.de/api/interpreter}
