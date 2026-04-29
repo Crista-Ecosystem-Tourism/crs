@@ -21,7 +21,9 @@ ENV VITE_API_URL=$VITE_API_URL \
     VITE_SUITCASE_API_URL=$VITE_SUITCASE_API_URL \
     VITE_USE_MOCKS=$VITE_USE_MOCKS
 
-RUN npm run build
+# Кешируем tsc-инкремент (.tsbuildinfo) и vite-кеш — даёт ~30–60 сек между деплоями
+RUN --mount=type=cache,target=/app/node_modules/.cache \
+    npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
