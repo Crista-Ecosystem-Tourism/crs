@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: crs_agent
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -68,14 +68,14 @@ services:
       # DATABASE_URL ломал asyncpg. Если хочешь явно — задай DATABASE_URL в Coolify целиком.
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: crs_agent
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
       RAG_URL: http://vectorization:8001
       ROUTE_URL: http://placesweb:8003
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       NO_PROXY: "*"
       HTTP_PROXY: ""
       HTTPS_PROXY: ""
@@ -98,11 +98,11 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: crs_agent
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
-      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-60}
       NO_PROXY: "*"
       HTTP_PROXY: ""
@@ -128,11 +128,11 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
-      POSTGRES_DB: crs_agent
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3333,http://localhost:5173,https://crista.online,https://www.crista.online,https://api.crista.online}
-      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       VECTORIZATION_URL: http://vectorization:8001
       DATA_SEED_DIR: /app/data/seed
       DATA_AUTO_BOOTSTRAP: ${DATA_AUTO_BOOTSTRAP:-true}
@@ -165,10 +165,12 @@ services:
   pgadmin:
     image: dpage/pgadmin4:8.14
     restart: unless-stopped
+    ports:
+      - "${COMPOSE_LAN_BIND:-127.0.0.1}:5050:80"
     environment:
       # .local не принимает pgAdmin 8.14+ (валидация email)
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-me}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL is required}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD is required}
       PGADMIN_CONFIG_SERVER_MODE: "False"
     depends_on:
       postgres:
