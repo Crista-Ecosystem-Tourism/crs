@@ -1,0 +1,84 @@
+# Переиспользуемый security-сканер для всех репо экосистемы.
+# Вызывается из crs (на push/PR/cron) и из дочерних репо (на push/PR).
+# Результаты заливаются в Security → Code scanning alerts ВЫЗЫВАЮЩЕГО репо.
+#
+# Политика блокировки:
+# - Trivy: блокируем только CRITICAL/HIGH с доступным фиксом (ignore-unfixed),
+#          MEDIUM/LOW идут в отчёт без блокировки.
+# - Semgrep: блокируем findings уровня ERROR.
+
+name: Reusable — security scan (Trivy + Semgrep)
+
+on:
+  workflow_call: {}
+
+jobs:
+  trivy:
+    name: Trivy (deps + secrets + IaC)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) — для Security tab. Не валит CI.
+      - name: Trivy — full report (SARIF)
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+      # 2) Блокирующий гейт — только фиксируемые CRITICAL/HIGH. Валит CI.
+      - name: Trivy — blocking gate (CRITICAL/HIGH, fixable)
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+  semgrep:
+    name: Semgrep (code vulnerabilities)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep scan (--error → блокирует на ERROR)
+        run: |
+          semgrep scan \
+            --config p/python \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/docker \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --sarif \
+            --output semgrep-results.sarif \
+            --error \
+            --severity ERROR
+
+      - name: Upload Semgrep SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
