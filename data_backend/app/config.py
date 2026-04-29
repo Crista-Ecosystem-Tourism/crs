@@ -88,3 +88,31 @@ def reindex_batch_size() -> int:
 def admin_token() -> str | None:
     raw = os.getenv("DATA_ADMIN_TOKEN")
     return raw.strip() if raw and raw.strip() else None
+
+
+def _env_bool(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
+
+
+def ru_region_iso_allowlist() -> frozenset[str] | None:
+    """Если задан DATA_RU_REGION_ISO_FILTER (через запятую), ETL по РФ только по этим ISO3166-2.
+
+    Пусто — все субъекты из ru_regions.json (как на проде).
+    """
+    raw = (os.getenv("DATA_RU_REGION_ISO_FILTER") or "").strip()
+    if not raw:
+        return None
+    codes = frozenset(part.strip().upper() for part in raw.split(",") if part.strip())
+    return codes if codes else None
+
+
+def skip_world_cities_osm() -> bool:
+    """DATA_SKIP_WORLD_CITIES=true — не крутить osm по cities.json при пустом scope (только РФ по списку регионов)."""
+
+    return _env_bool("DATA_SKIP_WORLD_CITIES")
+
+
+def skip_mkrf_kudago() -> bool:
+    """DATA_SKIP_MKRF_KUDAGO=true — пропуск mkrf и kudago в полном ETL (удобно для локалки)."""
+
+    return _env_bool("DATA_SKIP_MKRF_KUDAGO")

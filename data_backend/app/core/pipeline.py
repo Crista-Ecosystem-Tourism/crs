@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import reindex_batch_size
+from app.config import reindex_batch_size, skip_mkrf_kudago
 from app.core.chroma_indexer import cleanup_old_seeds, reindex_chroma
 from app.core.normalizer import (
     NormalizedPlace,
@@ -155,6 +155,10 @@ async def run_source(source_id: str, scope: str | None = None) -> dict[str, Any]
 async def run_all_sources(scope: str | None = None) -> list[dict[str, Any]]:
     results = []
     for src in list_sources():
+        if skip_mkrf_kudago() and src.id in {"mkrf", "kudago"}:
+            log.info("source %s skipped (DATA_SKIP_MKRF_KUDAGO)", src.id)
+            results.append({"status": "skipped", "source": src.id, "reason": "skip_mkrf_kudago"})
+            continue
         if src.requires_key and not src.is_configured():
             log.info("source %s requires key — skip", src.id)
             results.append({"status": "skipped", "source": src.id, "reason": "no_key"})

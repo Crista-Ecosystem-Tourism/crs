@@ -12,17 +12,26 @@ log = logging.getLogger(__name__)
 _scheduler: AsyncIOScheduler | None = None
 
 
-def _job_runner_all() -> None:
-    """Обёртка ПОД синхронный AP-Scheduler — он сам поймёт корутину."""
-    from app.core.pipeline import run_all_sources
+def _job_runner_etl_then_reindex() -> Any:
+    """Полный ETL, затем reindex Chroma — без жёсткого интервала между задачами (прод + локалка)."""
 
-    return run_all_sources()  # AsyncIOScheduler корректно обработает coroutine
+    from app.core.pipeline import reindex_pending, run_all_sources
 
+    async def _run() -> None:
+        log.info("cron: weekly ETL start")
+        try:
+            results = await run_all_sources()
+            log.info("cron: weekly ETL finished (%d source runs)", len(results))
+        except Exception:  # noqa: BLE001
+            log.exception("cron: weekly ETL failed — продолжаю reindex для уже загруженных строк")
+        log.info("cron: reindex_pending start")
+        try:
+            out = await reindex_pending()
+            log.info("cron: reindex_pending finished: %s", out)
+        except Exception:  # noqa: BLE001
+            log.exception("cron: reindex_pending failed")
 
-def _job_runner_reindex() -> None:
-    from app.core.pipeline import reindex_pending
-
-    return reindex_pending()
+    return _run()
 
 
 def start_scheduler() -> None:
@@ -34,27 +43,17 @@ def start_scheduler() -> None:
         return
 
     _scheduler = AsyncIOScheduler()
-    weekly_cron = os.getenv("DATA_WEEKLY_CRON", "0 3 * * 0")  # Sun 03:00
-    daily_reindex_cron = os.getenv("DATA_REINDEX_CRON", "30 4 * * *")
+    # Пн 00:01 UTC: полный ETL, затем сразу reindex (reindex только после окончания ETL по времени).
+    weekly_cron = os.getenv("DATA_WEEKLY_CRON", "1 0 * * 1")
     try:
         _scheduler.add_job(
-            _job_runner_all,
+            _job_runner_etl_then_reindex,
             CronTrigger.from_crontab(weekly_cron),
-            id="weekly-run-all",
-            replace_existing=True,
-        )
-        _scheduler.add_job(
-            _job_runner_reindex,
-            CronTrigger.from_crontab(daily_reindex_cron),
-            id="daily-reindex",
+            id="weekly-etl-then-reindex",
             replace_existing=True,
         )
         _scheduler.start()
-        log.info(
-            "scheduler started (weekly_cron=%s, reindex_cron=%s)",
-            weekly_cron,
-            daily_reindex_cron,
-        )
+        log.info("scheduler started (weekly_cron=%s, job=etl_then_reindex)", weekly_cron)
     except Exception as exc:  # noqa: BLE001
         log.exception("scheduler failed to start: %s", exc)
 

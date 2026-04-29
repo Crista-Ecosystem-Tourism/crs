@@ -1,7 +1,8 @@
 """Загрузка POI из OpenStreetMap через Overpass API.
 
 Покрытие:
-- Если scope=None — РФ (все 85 субъектов через ISO3166-2:RU-XX) + список топ-городов мира.
+- Если scope=None — РФ (все 85 субъектов через ISO3166-2:RU-XX) + список топ-городов мира,
+  либо узкий список регионов при DATA_RU_REGION_ISO_FILTER и/или без мира при DATA_SKIP_WORLD_CITIES.
 - Если scope='ru' — только Россия.
 - Если scope='world' — только города мира.
 - Если scope похож на 'RU-MOW', 'RU-77' и т.п. — один регион.
@@ -19,7 +20,12 @@ from typing import Any
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from app.config import http_user_agent, overpass_endpoint
+from app.config import (
+    http_user_agent,
+    overpass_endpoint,
+    ru_region_iso_allowlist,
+    skip_world_cities_osm,
+)
 from app.core.normalizer import NormalizedPlace, osm_to_place
 from app.sources.base import BaseSource, FetchBatch
 
@@ -128,6 +134,15 @@ class OsmOverpassSource(BaseSource):
     async def fetch(self, scope: str | None = None) -> AsyncIterator[FetchBatch]:
         scope = (scope or "").strip()
         regions = _load_ru_regions()
+        allow = ru_region_iso_allowlist()
+        if allow is not None:
+            before = len(regions)
+            regions = [r for r in regions if r.get("iso") in allow]
+            log.info(
+                "DATA_RU_REGION_ISO_FILTER: осталось %d из %d субъектов РФ",
+                len(regions),
+                before,
+            )
         cities = _load_world_cities()
 
         async with httpx.AsyncClient() as client:
@@ -138,12 +153,14 @@ class OsmOverpassSource(BaseSource):
                         continue
                     yield await self._fetch_region(client, entry)
                     await asyncio.sleep(2.0)
-                if scope == "":
+                if scope == "" and not skip_world_cities_osm():
                     for city in cities:
                         if city.get("country_code", "RU").upper() == "RU":
                             continue
                         yield await self._fetch_city(client, city)
                         await asyncio.sleep(2.0)
+                elif scope == "" and skip_world_cities_osm():
+                    log.info("DATA_SKIP_WORLD_CITIES: пропуск городов мира (cities.json)")
                 return
 
             if scope.lower() == "world":

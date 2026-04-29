@@ -137,13 +137,15 @@ services:
       DATA_SEED_DIR: /app/data/seed
       DATA_AUTO_BOOTSTRAP: ${DATA_AUTO_BOOTSTRAP:-true}
       DATA_DISABLE_CRON: ${DATA_DISABLE_CRON:-false}
-      DATA_WEEKLY_CRON: ${DATA_WEEKLY_CRON:-0 3 * * *}
-      DATA_REINDEX_CRON: ${DATA_REINDEX_CRON:-30 4 * * *}
+      DATA_WEEKLY_CRON: ${DATA_WEEKLY_CRON:-1 0 * * 1}
       DATA_ADMIN_TOKEN: ${DATA_ADMIN_TOKEN:-}
       OVERPASS_ENDPOINT: ${OVERPASS_ENDPOINT:-https://overpass-api.de/api/interpreter}
       WIKIDATA_ENDPOINT: ${WIKIDATA_ENDPOINT:-https://query.wikidata.org/sparql}
       KUDAGO_ENDPOINT: ${KUDAGO_ENDPOINT:-https://kudago.com/public-api/v1.4}
       DATA_USER_AGENT: ${DATA_USER_AGENT:-CristaDataBackend/1.0 (+https://crista.online; contact@crista.online)}
+      DATA_RU_REGION_ISO_FILTER: ${DATA_RU_REGION_ISO_FILTER:-}
+      DATA_SKIP_WORLD_CITIES: ${DATA_SKIP_WORLD_CITIES:-false}
+      DATA_SKIP_MKRF_KUDAGO: ${DATA_SKIP_MKRF_KUDAGO:-false}
       NO_PROXY: "*"
       HTTP_PROXY: ""
       HTTPS_PROXY: ""
