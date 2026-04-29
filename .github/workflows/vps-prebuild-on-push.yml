@@ -1,0 +1,54 @@
+# После push в crs/main на VPS выполняется git pull и selective rebuild образов,
+# затем — вызов Coolify (как при ручном ./scripts/prebuild-and-deploy.sh).
+#
+# Секреты репозитория crs (Settings → Secrets → Actions):
+#   VPS_HOST              — хост или IP сервера (Coolify/VPS)
+#   VPS_USER              — пользователь SSH (например root или deploy)
+#   VPS_SSH_PRIVATE_KEY   — приватный ключ OpenSSH (весь PEM/едино блоком)
+#   VPS_CRS_PATH          — абсолютный путь к клону crs на сервере, например /opt/crista/crs
+#
+# На сервере в этом каталоге должны быть настроены git remote и файл .env.deploy
+# с COOLIFY_DEPLOY_WEBHOOK и при необходимости COOLIFY_TOKEN (см. README crs).
+
+name: VPS — prebuild после push
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+  workflow_dispatch:
+
+concurrency:
+  group: vps-prebuild-crs-prod
+  cancel-in-progress: false
+
+jobs:
+  prebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Пока секреты не заданы — workflow пропускается (не красный CI при каждом push).
+    if: >-
+      ${{
+        secrets.VPS_HOST != '' &&
+        secrets.VPS_USER != '' &&
+        secrets.VPS_SSH_PRIVATE_KEY != '' &&
+        secrets.VPS_CRS_PATH != ''
+      }}
+
+    steps:
+      - name: SSH — git pull + prebuild + Coolify webhook
+        uses: appleboy/ssh-action@v1.2.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          script_stop: true
+          command_timeout: 90m
+          script: |
+            set -euo pipefail
+            cd '${{ secrets.VPS_CRS_PATH }}'
+            export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+            ./scripts/prebuild-and-deploy.sh

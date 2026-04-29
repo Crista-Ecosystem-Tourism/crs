@@ -17,6 +17,25 @@ docker compose up -d
 
 Подключение к БД из pgAdmin и смысл Chroma: [../LOCAL-POSTGRES-AND-CHROMA.md](../LOCAL-POSTGRES-AND-CHROMA.md)
 
+## Автоматический prebuild при push в `crs`
+
+Репозиторий **`crs`**: workflow [`.github/workflows/vps-prebuild-on-push.yml`](.github/workflows/vps-prebuild-on-push.yml) при каждом push в **`main`** (кроме изменений только `*.md` и `docs/**`) подключается по SSH к VPS и выполняет `./scripts/prebuild-and-deploy.sh` — selective rebuild образов и вызов Coolify webhook.
+
+**Секреты GitHub** (Settings → Secrets and variables → Actions):
+
+| Секрет | Назначение |
+|--------|------------|
+| `VPS_HOST` | Хост или IP сервера |
+| `VPS_USER` | Пользователь SSH |
+| `VPS_SSH_PRIVATE_KEY` | Приватный ключ (deploy-key или машина CI); на сервере соответствующий публичный ключ в `authorized_keys` |
+| `VPS_CRS_PATH` | Абсолютный путь к клону `crs`, например `/opt/crista/crs` |
+
+Пока секреты не заданы, job **пропускается** (workflow не падает красным). Ручной запуск того же сценария: вкладка Actions → **VPS — prebuild после push** → **Run workflow**.
+
+На сервере в каталоге `VPS_CRS_PATH` нужны рабочий `git pull` от GitHub и файл **`.env.deploy`** с `COOLIFY_DEPLOY_WEBHOOK` / при необходимости `COOLIFY_TOKEN`, как при ручном prebuild.
+
+Нестандартный SSH-порт: временно добавьте в workflow параметр `port:` для `ssh-action` или используйте `~/.ssh/config` на образе runner (редко нужно).
+
 ## Coolify: быстрый деплой без платных раннеров
 
 В проде Coolify больше не собирает app-образы. Он запускает локальные images:
@@ -45,8 +64,9 @@ chmod 600 .env.deploy
 Что важно:
 
 1. В Coolify у приложения со стеком из **`crs`** должен быть отключён автодеплой по push из Git.
-2. GitHub workflow [`.github/workflows/trigger-coolify-deploy.yml`](.github/workflows/trigger-coolify-deploy.yml) оставлен как ручной fallback (`workflow_dispatch`), но обычный prod deploy должен идти через VPS-скрипт.
-3. Если менялся только один сервис, скрипт пересоберёт только его image. Если это первый запуск или поменялся `docker-compose.build.yml`, будут собраны все app images.
+2. GitHub Actions [**VPS — prebuild после push**](.github/workflows/vps-prebuild-on-push.yml): при push в `main` на VPS по SSH выполняется тот же `prebuild-and-deploy.sh` (секреты `VPS_*` в репозитории `crs`). Альтернатива ручному SSH на сервер после каждого merge.
+3. Workflow [**Coolify — ручной деплой**](.github/workflows/trigger-coolify-deploy.yml) остаётся как fallback только для триггера Coolify без сборки (`workflow_dispatch`).
+4. Если менялся только один сервис, скрипт пересоберёт только его image. Если это первый запуск или поменялся `docker-compose.build.yml`, будут собраны все app images.
 
 ## Документы в этом репо
 
