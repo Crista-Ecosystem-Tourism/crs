@@ -34,6 +34,9 @@ services:
   vectorization:
     build: ./vectorization_backend
     restart: unless-stopped
+    volumes:
+      # тот же каталог, что у data_backend — эндпоинт load/json читает filepath с диска
+      - data_seed:/app/data/seed
     environment:
       EMBEDDING_PROVIDER: huggingface
       EMBEDDING_MODEL_NAME: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
