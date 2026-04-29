@@ -1,0 +1,81 @@
+# Сканирование безопасности: Trivy (зависимости, образы, секреты) + Semgrep (код).
+#
+# Триггеры: push в main, PR в main, еженедельно (вс 03:00 UTC).
+# Результаты: GitHub → Security → Code scanning alerts.
+
+name: Security Scan (Trivy + Semgrep)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 0'   # каждое воскресенье 03:00 UTC
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Trivy: зависимости, Docker, секреты, IaC ──────────
+  trivy:
+    name: Trivy (dependencies + secrets)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy — filesystem scan (deps + secrets + IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: 0
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ── Semgrep: уязвимости в коде (Python, JS) ───────────
+  semgrep:
+    name: Semgrep (code vulnerabilities)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep scan
+        run: |
+          semgrep scan \
+            --config auto \
+            --config p/python \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/docker \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --sarif \
+            --output semgrep-results.sarif \
+            --error \
+            --severity ERROR \
+            || true
+
+      - name: Upload Semgrep results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
