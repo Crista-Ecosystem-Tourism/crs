@@ -1,4 +1,8 @@
-# Один деплой в Coolify при лавине коммитов в `crs` (в т.ч. chore(sync) из дочерних репо).
+# Ручной fallback-деплой в Coolify.
+#
+# Основной prod-деплой теперь идёт через scripts/prebuild-and-deploy.sh на VPS:
+# сначала локально собираются images, потом вызывается Coolify webhook.
+# Не запускаем Coolify на каждый push, чтобы deploy не ушёл до prebuild.
 #
 # Секреты (Settings → Secrets → Actions):
 # - COOLIFY_DEPLOY_WEBHOOK — полный URL: Webhooks → Deploy Webhook
@@ -9,11 +13,10 @@
 #
 # См.: https://coolify.io/docs/applications/ci-cd/github/actions
 
-name: Coolify — один деплой (debounce)
+name: Coolify — ручной деплой
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: coolify-crs-prod

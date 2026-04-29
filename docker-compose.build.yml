@@ -1,0 +1,35 @@
+services:
+  vectorization:
+    image: crs-vectorization:prod
+    build:
+      context: ./vectorization_backend
+
+  placesweb:
+    image: crs-placesweb:prod
+    build:
+      context: ./placesweb_backend
+
+  ai_agent:
+    image: crs-ai-agent:prod
+    build:
+      context: ./ai_agent
+
+  suitcase_backend:
+    image: crs-suitcase-backend:prod
+    build:
+      context: ./suitcase/backend
+
+  data_backend:
+    image: crs-data-backend:prod
+    build:
+      context: ./data_backend
+
+  frontend:
+    image: crs-frontend:prod
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_GRAPH_API_URL: /graph-api
+        VITE_SUITCASE_API_URL: /suitcase-api
+        VITE_USE_MOCKS: "false"

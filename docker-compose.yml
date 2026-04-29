@@ -32,8 +32,8 @@ services:
 
   # ── Vectorization Backend (RAG) ─────────────────────────
   vectorization:
-    build:
-      context: ./vectorization_backend
+    image: crs-vectorization:prod
+    pull_policy: never
     restart: unless-stopped
     volumes:
       # тот же каталог, что у data_backend — эндпоинт load/json читает filepath с диска
@@ -53,8 +53,8 @@ services:
   # ── PlacesWeb Backend (Graph) ───────────────────────────
   # Без порта на хост: снаружи только через /graph-api/ на фронте (см. frontend/nginx.conf)
   placesweb:
-    build:
-      context: ./placesweb_backend
+    image: crs-placesweb:prod
+    pull_policy: never
     restart: unless-stopped
     environment:
       NO_PROXY: "*"
@@ -63,8 +63,8 @@ services:
 
   # ── AI Agent Backend ────────────────────────────────────
   ai_agent:
-    build:
-      context: ./ai_agent
+    image: crs-ai-agent:prod
+    pull_policy: never
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
@@ -97,8 +97,8 @@ services:
 
   # ── Suitcase Backend (мобильное приложение + веб-раздел "Мой чемодан") ──
   suitcase_backend:
-    build:
-      context: ./suitcase/backend
+    image: crs-suitcase-backend:prod
+    pull_policy: never
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8010:8010"
@@ -128,8 +128,8 @@ services:
 
   # ── Data Backend (ETL + наполнение Chroma) ─────────────
   data_backend:
-    build:
-      context: ./data_backend
+    image: crs-data-backend:prod
+    pull_policy: never
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8004:8004"
@@ -191,13 +191,8 @@ services:
   # ── Frontend ────────────────────────────────────────────
   # 127.0.0.1 — только с этой машины. Для VPS: COMPOSE_LAN_BIND=0.0.0.0 в .env
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_URL: /api
-        VITE_GRAPH_API_URL: /graph-api
-        VITE_SUITCASE_API_URL: /suitcase-api
-        VITE_USE_MOCKS: "false"
+    image: crs-frontend:prod
+    pull_policy: never
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:3333:80"
