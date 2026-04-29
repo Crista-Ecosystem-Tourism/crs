@@ -22,4 +22,5 @@ jobs:
     permissions:
       security-events: write
       contents: read
+      actions: read
     uses: ./.github/workflows/reusable-security-scan.yml
