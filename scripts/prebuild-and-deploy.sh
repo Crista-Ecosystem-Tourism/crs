@@ -8,6 +8,7 @@ STATE_FILE="${STATE_DIR}/last-built-sha"
 BUILD_COMPOSE_FILE="${CRS_BUILD_COMPOSE_FILE:-${ROOT_DIR}/docker-compose.build.yml}"
 DEPLOY_ENV_FILE="${CRS_DEPLOY_ENV_FILE:-${ROOT_DIR}/.env.deploy}"
 COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-6}"
+CRS_SKIP_GIT="${CRS_SKIP_GIT:-0}"
 
 ALL_SERVICES=(
   vectorization
@@ -127,8 +128,11 @@ trigger_coolify() {
 }
 
 need docker
-need git
 need curl
+
+if [ "${CRS_SKIP_GIT}" != "1" ]; then
+  need git
+fi
 
 if [ ! -f "${BUILD_COMPOSE_FILE}" ]; then
   echo "Не найден build compose: ${BUILD_COMPOSE_FILE}" >&2
@@ -140,15 +144,27 @@ if [ -f "${STATE_FILE}" ]; then
   old_sha="$(tr -d '[:space:]' < "${STATE_FILE}")"
 fi
 
-echo "Обновляю crs/${BRANCH}..."
-git fetch origin "${BRANCH}"
-git pull --ff-only origin "${BRANCH}"
-new_sha="$(git rev-parse HEAD)"
+if [ "${CRS_SKIP_GIT}" = "1" ] || [ ! -d "${ROOT_DIR}/.git" ]; then
+  echo "Git pull пропущен: используется локальный snapshot ${ROOT_DIR}."
+  new_sha="snapshot-$(date -u +%Y%m%d%H%M%S)"
+  if [ ! -f "${STATE_FILE}" ]; then
+    echo "Первый snapshot prebuild — собираю все app images."
+    old_sha=""
+  fi
+else
+  echo "Обновляю crs/${BRANCH}..."
+  git fetch origin "${BRANCH}"
+  git pull --ff-only origin "${BRANCH}"
+  new_sha="$(git rev-parse HEAD)"
+fi
 
 SELECTED_SERVICES=()
 build_all=0
 
-if [ -z "${old_sha}" ] || ! git cat-file -e "${old_sha}^{commit}" 2>/dev/null; then
+if [ "${new_sha}" = snapshot-* ]; then
+  echo "Snapshot-режим: без git history нельзя точно вычислить diff — собираю все app images."
+  build_all=1
+elif [ -z "${old_sha}" ] || ! git cat-file -e "${old_sha}^{commit}" 2>/dev/null; then
   echo "Предыдущий successful prebuild не найден — собираю все app images."
   build_all=1
 elif [ "${old_sha}" = "${new_sha}" ]; then
