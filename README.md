@@ -42,3 +42,4 @@ docker compose up --build -d
 ## Подробный гайд (порты, dev без Docker, API)
 
 [README](https://github.com/Crista-Ecosystem-Tourism/crs#readme) на странице репо — краткое дублирование; максимально полная версия для разработчика ведётся в локальном клоне `crista` (корневой `README` рядом с `crs/`, `frontend/`, …), если у вас так настроен рабочий каталог.
+
