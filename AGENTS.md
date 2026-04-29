@@ -20,4 +20,4 @@
 
 ## Исключение
 
-Запросы про **инфраструктуру монорепы** (`docker-compose.yml`, nginx в `crs/frontend`, GitHub Actions sync, корень воркспейса) — правь **в `crs/`**, commit и push в репозиторий **`crs`**.
+Запросы про **инфраструктуру монорепы** (`docker-compose.yml`, nginx в `crs/frontend`, GitHub Actions sync, корень воркспейса) — правь **в `crs/`**, commit и push в репозиторий **`crs`**
