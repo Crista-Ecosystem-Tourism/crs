@@ -32,8 +32,8 @@ services:
 
   # ── Vectorization Backend (RAG) ─────────────────────────
   vectorization:
-    image: crs-vectorization:prod
-    pull_policy: never
+    build:
+      context: ./vectorization_backend
     restart: unless-stopped
     volumes:
       # тот же каталог, что у data_backend — эндпоинт load/json читает filepath с диска
@@ -53,8 +53,8 @@ services:
   # ── PlacesWeb Backend (Graph) ───────────────────────────
   # Без порта на хост: снаружи только через /graph-api/ на фронте (см. frontend/nginx.conf)
   placesweb:
-    image: crs-placesweb:prod
-    pull_policy: never
+    build:
+      context: ./placesweb_backend
     restart: unless-stopped
     environment:
       NO_PROXY: "*"
@@ -63,8 +63,8 @@ services:
 
   # ── AI Agent Backend ────────────────────────────────────
   ai_agent:
-    image: crs-ai-agent:prod
-    pull_policy: never
+    build:
+      context: ./ai_agent
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
@@ -97,8 +97,8 @@ services:
 
   # ── Suitcase Backend (мобильное приложение + веб-раздел "Мой чемодан") ──
   suitcase_backend:
-    image: crs-suitcase-backend:prod
-    pull_policy: never
+    build:
+      context: ./suitcase/backend
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8010:8010"
@@ -128,8 +128,8 @@ services:
 
   # ── Data Backend (ETL + наполнение Chroma) ─────────────
   data_backend:
-    image: crs-data-backend:prod
-    pull_policy: never
+    build:
+      context: ./data_backend
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8004:8004"
@@ -191,8 +191,13 @@ services:
   # ── Frontend ────────────────────────────────────────────
   # 127.0.0.1 — только с этой машины. Для VPS: COMPOSE_LAN_BIND=0.0.0.0 в .env
   frontend:
-    image: crs-frontend:prod
-    pull_policy: never
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_GRAPH_API_URL: /graph-api
+        VITE_SUITCASE_API_URL: /suitcase-api
+        VITE_USE_MOCKS: "false"
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:3333:80"

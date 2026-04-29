@@ -1,14 +1,13 @@
 # Crista — `crs` (Docker Compose)
 
-В репо лежат **`docker-compose.yml`** и каталоги сервисов: `frontend/`, `ai_agent/`, `vectorization_backend/`, `placesweb_backend/`, `data_backend/`, `suitcase/`. Основной compose запускает уже готовые локальные images, а сборка вынесена в `docker-compose.build.yml`.
+В репо лежат **`docker-compose.yml`** и каталоги сервисов: `frontend/`, `ai_agent/`, `vectorization_backend/`, `placesweb_backend/` (и при появлении кода — `data_backend/`). Это **точка входа** для **сборки** **всего** **стека** (локально, Coolify, VPS).
 
 ## Быстрый старт
 
 ```bash
 cp .env.example .env
 # задать OPENROUTER_API_KEY, JWT_SECRET, VITE_*, CORS_*
-docker compose -f docker-compose.build.yml build
-docker compose up -d
+docker compose up --build -d
 ```
 
 **Порты на хост:** **3333** (фронт), **8002** (API); граф — **только** путь `http://localhost:3333/graph-api/` (nginx → placesweb, **без** :8003). По умолчанию привязка **`127.0.0.1`** (`COMPOSE_LAN_BIND` в `.env`) — с другой машины в сети не открывается. Остальное (RAG, Chroma, pgAdmin, …) — оверлей [docker-compose.dev-ports.yaml](docker-compose.dev-ports.yaml).
@@ -17,56 +16,13 @@ docker compose up -d
 
 Подключение к БД из pgAdmin и смысл Chroma: [../LOCAL-POSTGRES-AND-CHROMA.md](../LOCAL-POSTGRES-AND-CHROMA.md)
 
-## Автоматический prebuild при push в `crs`
+## Coolify: один деплой при лавине sync
 
-Репозиторий **`crs`**: workflow [`.github/workflows/vps-prebuild-on-push.yml`](.github/workflows/vps-prebuild-on-push.yml) при каждом push в **`main`** (кроме изменений только `*.md` и `docs/**`) подключается по SSH к VPS и выполняет `./scripts/prebuild-and-deploy.sh` — selective rebuild образов и вызов Coolify webhook.
+Пуши в `frontend` / `ai_agent` / … → Actions заливают копии в `crs` (несколько коммитов). Чтобы в Coolify уходил **один** деплой по **последнему** `main`, в `crs` есть workflow [`.github/workflows/trigger-coolify-deploy.yml`](.github/workflows/trigger-coolify-deploy.yml) (отмена лишних запусков через `concurrency`).
 
-**Секреты GitHub** (Settings → Secrets and variables → Actions):
-
-| Секрет | Назначение |
-|--------|------------|
-| `VPS_HOST` | Хост или IP сервера |
-| `VPS_USER` | Пользователь SSH |
-| `VPS_SSH_PRIVATE_KEY` | Приватный ключ (deploy-key или машина CI); на сервере соответствующий публичный ключ в `authorized_keys` |
-| `VPS_CRS_PATH` | Абсолютный путь к клону `crs`, например `/opt/crista/crs` |
-
-Пока секреты не заданы, job **пропускается** (workflow не падает красным). Ручной запуск того же сценария: вкладка Actions → **VPS — prebuild после push** → **Run workflow**.
-
-На сервере в каталоге `VPS_CRS_PATH` нужны рабочий `git pull` от GitHub и файл **`.env.deploy`** с `COOLIFY_DEPLOY_WEBHOOK` / при необходимости `COOLIFY_TOKEN`, как при ручном prebuild.
-
-Нестандартный SSH-порт: временно добавьте в workflow параметр `port:` для `ssh-action` или используйте `~/.ssh/config` на образе runner (редко нужно).
-
-## Coolify: быстрый деплой без платных раннеров
-
-В проде Coolify больше не собирает app-образы. Он запускает локальные images:
-
-- `crs-vectorization:prod`
-- `crs-placesweb:prod`
-- `crs-ai-agent:prod`
-- `crs-suitcase-backend:prod`
-- `crs-data-backend:prod`
-- `crs-frontend:prod`
-
-Сборка идёт на том же VPS заранее через [scripts/prebuild-and-deploy.sh](scripts/prebuild-and-deploy.sh), без GitHub-hosted build minutes и без внешнего registry.
-
-Первый запуск на VPS:
-
-```bash
-cd /path/to/crs
-cat > .env.deploy <<'EOF'
-COOLIFY_DEPLOY_WEBHOOK=https://coolify.example/api/v1/deploy?uuid=...
-COOLIFY_TOKEN=...
-EOF
-chmod 600 .env.deploy
-./scripts/prebuild-and-deploy.sh
-```
-
-Что важно:
-
-1. В Coolify у приложения со стеком из **`crs`** должен быть отключён автодеплой по push из Git.
-2. GitHub Actions [**VPS — prebuild после push**](.github/workflows/vps-prebuild-on-push.yml): при push в `main` на VPS по SSH выполняется тот же `prebuild-and-deploy.sh` (секреты `VPS_*` в репозитории `crs`). Альтернатива ручному SSH на сервер после каждого merge.
-3. Workflow [**Coolify — ручной деплой**](.github/workflows/trigger-coolify-deploy.yml) остаётся как fallback только для триггера Coolify без сборки (`workflow_dispatch`).
-4. Если менялся только один сервис, скрипт пересоберёт только его image. Если это первый запуск или поменялся `docker-compose.build.yml`, будут собраны все app images.
+1. В Coolify у приложения со стеком из **`crs`**: **отключи** автодеплой по push из Git (иначе сработают и Git, и workflow).
+2. В GitHub: в секреты репо `crs` добавь `COOLIFY_DEPLOY_WEBHOOK` и `COOLIFY_TOKEN` — по комментариям в workflow.
+3. Если в Actions **401/403**: при создании **API token** в Coolify укажи **IP allowlist** `0.0.0.0/0` или оставь пустым (иначе запросы с раннеров GitHub не проходят). Права токена — **root** (`*`), не read-only.
 
 ## Документы в этом репо
 

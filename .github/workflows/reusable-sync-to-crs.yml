@@ -39,8 +39,6 @@ jobs:
           rsync -a --delete \
             --exclude='.git' \
             --exclude='.github' \
-            --exclude='._*' \
-            --exclude='.DS_Store' \
             --exclude='node_modules' \
             --exclude='venv' \
             --exclude='.venv' \
