@@ -24,7 +24,7 @@ app.add_middleware(
     secret_key=os.getenv("SESSION_SECRET", os.getenv("JWT_SECRET", "dev-secret-key-min-32-chars")),
     max_age=3600,
     same_site="lax",
-    https_only=False,  # В production - True
+    https_only=False,  # В production поставьте True
 )
 
 # Пустой CORS_ORIGINS на проде ломает вход с фронта (браузер блокирует ответ без Allow-Origin).
@@ -56,6 +56,7 @@ app.include_router(travel_data_router)
 
 @app.get("/health")
 def health():
+    # deploy cache test
     return {"ok": True}
 
 @app.get("/")
