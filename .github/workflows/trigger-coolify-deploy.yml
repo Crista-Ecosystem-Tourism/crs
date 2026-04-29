@@ -39,25 +39,9 @@ jobs:
 
           set +e
           OK=0
+
+          # 1) POST /api/v1/deploy с force:false — использует Docker-кэш (без --no-cache)
           if [ -n "$TOKEN" ]; then
-            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" \
-              -H "Authorization: Bearer ${TOKEN}" \
-              -H "Accept: application/json" 2>/tmp/coolify.err)
-            if http_ok "$HTTP"; then
-              echo "Деплой: GET + Bearer, HTTP $HTTP"
-              OK=1
-            else
-              echo "GET + Bearer: HTTP $HTTP, ответ: $(head -c 400 /tmp/coolify.rsp 2>/dev/null || true)"
-            fi
-          fi
-          if [ "$OK" -eq 0 ]; then
-            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" -H "Accept: application/json" 2>/dev/null)
-            if http_ok "$HTTP"; then
-              echo "Деплой: GET без Bearer, HTTP $HTTP"
-              OK=1
-            fi
-          fi
-          if [ "$OK" -eq 0 ] && [ -n "$TOKEN" ]; then
             API_ROOT="${WEBHOOK%%/api/v1/deploy*}"
             UUID=$(printf '%s' "$WEBHOOK" | sed -n 's/^.*[?&]uuid=\([^&?#]*\).*$/\1/p')
             if [ -n "$API_ROOT" ] && [ -n "$UUID" ]; then
@@ -67,13 +51,34 @@ jobs:
                 -H "Accept: application/json" \
                 -d "{\"uuid\":\"$UUID\",\"force\":false}" 2>/dev/null)
               if http_ok "$HTTP"; then
-                echo "Деплой: POST + JSON, HTTP $HTTP"
+                echo "Деплой: POST + JSON (force=false, с кэшем), HTTP $HTTP"
                 OK=1
               else
                 echo "POST: HTTP $HTTP, ответ: $(head -c 400 /tmp/coolify.rsp 2>/dev/null || true)"
               fi
             fi
           fi
+
+          # 2) Fallback: GET webhook (Coolify может ставить force_rebuild=true)
+          if [ "$OK" -eq 0 ] && [ -n "$TOKEN" ]; then
+            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/json" 2>/tmp/coolify.err)
+            if http_ok "$HTTP"; then
+              echo "Деплой: GET + Bearer (fallback), HTTP $HTTP"
+              OK=1
+            else
+              echo "GET + Bearer: HTTP $HTTP, ответ: $(head -c 400 /tmp/coolify.rsp 2>/dev/null || true)"
+            fi
+          fi
+          if [ "$OK" -eq 0 ]; then
+            HTTP=$(curl -sS -o /tmp/coolify.rsp -w "%{http_code}" --request GET "$WEBHOOK" -H "Accept: application/json" 2>/dev/null)
+            if http_ok "$HTTP"; then
+              echo "Деплой: GET без Bearer (fallback), HTTP $HTTP"
+              OK=1
+            fi
+          fi
+
           set -e
           if [ "$OK" -eq 1 ]; then
             echo "Деплой в Coolify запрошен."
