@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ── Prometheus self-monitoring ─────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Host metrics (node-exporter) ───────────────────────
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # ── Docker container metrics (cAdvisor) ────────────────
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # ── PostgreSQL metrics ─────────────────────────────────
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # ── Nginx (frontend) stub_status ───────────────────────
+  - job_name: nginx
+    metrics_path: /nginx_status
+    static_configs:
+      - targets: ["frontend:80"]
+
+  # ── Application health probes ──────────────────────────
+  - job_name: app-health
+    metrics_path: /health
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - "ai_agent:8002"
+          - "data_backend:8004"
+          - "suitcase_backend:8010"
+        labels:
+          group: "backend"

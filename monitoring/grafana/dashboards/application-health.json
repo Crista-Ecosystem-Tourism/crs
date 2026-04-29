@@ -1,0 +1,90 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Service Health Status",
+      "description": "1 = healthy (HTTP 2xx from /health), 0 = down",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "up{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A", "instant": true }
+      ]
+    },
+    {
+      "title": "Health Check Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "min": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "scrape_duration_seconds{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A" }
+      ]
+    },
+    {
+      "title": "Uptime (since last restart)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "green", "value": 86400 }] } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "time() - container_start_time_seconds{name=~\"(ai_agent|data_backend|suitcase_backend|frontend|placesweb|vectorization|postgres|chromadb)-.*\"}", "legendFormat": "{{name}}", "refId": "A", "instant": true }
+      ]
+    },
+    {
+      "title": "Nginx Active Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "nginx_connections_active", "legendFormat": "Active", "refId": "A" },
+        { "expr": "nginx_connections_reading", "legendFormat": "Reading", "refId": "B" },
+        { "expr": "nginx_connections_writing", "legendFormat": "Writing", "refId": "C" },
+        { "expr": "nginx_connections_waiting", "legendFormat": "Waiting", "refId": "D" }
+      ]
+    },
+    {
+      "title": "Nginx Requests / sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(nginx_connections_accepted[5m])", "legendFormat": "Accepted/s", "refId": "A" },
+        { "expr": "rate(nginx_connections_handled[5m])", "legendFormat": "Handled/s", "refId": "B" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["crista", "application"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "🌐 Application Health",
+  "uid": "crista-application-health"
+}
