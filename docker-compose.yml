@@ -1,18 +1,5 @@
 services:
 
-  # ── Local Docker Registry (BuildKit cache backend) ──────
-  # Used by build:.cache_from / cache_to for persistent layer cache between deploys.
-  # Listens only on loopback; BuildKit on the host treats 127.0.0.1 as insecure by default.
-  registry:
-    image: registry:2
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:5000:5000"
-    environment:
-      REGISTRY_STORAGE_DELETE_ENABLED: "true"
-    volumes:
-      - registry_data:/var/lib/registry
-
   # ── PostgreSQL ──────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -47,10 +34,6 @@ services:
   vectorization:
     build:
       context: ./vectorization_backend
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/vectorization:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/vectorization:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     volumes:
       # тот же каталог, что у data_backend — эндпоинт load/json читает filepath с диска
@@ -72,10 +55,6 @@ services:
   placesweb:
     build:
       context: ./placesweb_backend
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/placesweb:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/placesweb:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     environment:
       NO_PROXY: "*"
@@ -86,10 +65,6 @@ services:
   ai_agent:
     build:
       context: ./ai_agent
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/ai_agent:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/ai_agent:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8002:8002"
@@ -124,10 +99,6 @@ services:
   suitcase_backend:
     build:
       context: ./suitcase/backend
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/suitcase_backend:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/suitcase_backend:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8010:8010"
@@ -159,10 +130,6 @@ services:
   data_backend:
     build:
       context: ./data_backend
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/data_backend:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/data_backend:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:8004:8004"
@@ -231,10 +198,6 @@ services:
         VITE_GRAPH_API_URL: /graph-api
         VITE_SUITCASE_API_URL: /suitcase-api
         VITE_USE_MOCKS: "false"
-      cache_from:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/frontend:buildcache
-      cache_to:
-        - type=registry,ref=127.0.0.1:5000/crs-cache/frontend:buildcache,mode=max,ignore-error=true
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:3333:80"
@@ -249,4 +212,3 @@ volumes:
   chromadata:
   pgadmin_data:
   data_seed:
-  registry_data:
