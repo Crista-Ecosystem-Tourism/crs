@@ -1,0 +1,146 @@
+# Еженедельный AI security review всей кодовой базы (каждое воскресенье 03:00 UTC).
+# Claude (claude-code-security-review) анализирует семантику кода — ловит то,
+# что rule-based Trivy/Semgrep пропускают (бизнес-логика, taint-flow, race conditions).
+#
+# Результаты:
+#   - GitHub Issue с label "claude-review" (создаётся/обновляется при находках)
+#   - Артефакт JSON в этом же запуске
+#
+# Секрет: CLAUDE_API_KEY — добавить в Settings → Secrets → Actions репо crs.
+# Ключ нужен с доступом к Claude API + Claude Code Usage (console.anthropic.com).
+#
+# GHAS не требуется — работает на бесплатном плане.
+
+name: Weekly Claude Security Review
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # воскресенье 03:00 UTC
+  workflow_dispatch:       # ручной запуск
+
+concurrency:
+  group: claude-security-weekly
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  claude-security:
+    name: Claude AI — full codebase security review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # полная история — максимальный контекст
+
+      - name: Claude security review
+        id: review
+        uses: anthropics/claude-code-security-review@main
+        with:
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          comment-pr: 'false'
+          upload-results: 'true'
+        continue-on-error: true   # не блокируем если ключ не задан
+
+      # Проверяем что ключ вообще задан
+      - name: Check API key configured
+        if: env.CLAUDE_API_KEY == ''
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: |
+          echo "## ⚠️ CLAUDE_API_KEY не задан" >> $GITHUB_STEP_SUMMARY
+          echo "Добавь секрет CLAUDE_API_KEY в Settings → Secrets → Actions этого репо." >> $GITHUB_STEP_SUMMARY
+          echo "Ключ: console.anthropic.com → API Keys" >> $GITHUB_STEP_SUMMARY
+
+      # Создаём лейблы если нет
+      - name: Ensure GitHub labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "security"      --color "e11d48" --description "Security findings"          2>/dev/null || true
+          gh label create "claude-review" --color "7c3aed" --description "Claude AI security review"  2>/dev/null || true
+
+      # Если находки есть — создаём/обновляем issue
+      - name: Create or update Issue with findings
+        if: steps.review.outputs.findings-count != '0' && steps.review.outputs.findings-count != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.review.outputs.findings-count }}
+          RESULTS_FILE: ${{ steps.review.outputs.results-file }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          DATE=$(date -u '+%Y-%m-%d')
+          SNIPPET=$(cat "${RESULTS_FILE}" 2>/dev/null | python3 -m json.tool 2>/dev/null | head -80 || echo "см. артефакт запуска")
+
+          BODY=$(cat <<ISSUE_EOF
+          ## 🔐 Claude AI Security Review — ${DATE}
+
+          **Найдено находок: ${FINDINGS}**
+
+          Полный JSON-отчёт — в [артефактах этого запуска](${RUN_URL}).
+
+          <details>
+          <summary>Фрагмент результатов</summary>
+
+          \`\`\`json
+          ${SNIPPET}
+          \`\`\`
+
+          </details>
+
+          ---
+          *Инструмент: [anthropics/claude-code-security-review](https://github.com/anthropics/claude-code-security-review)*
+          *Запуск: ${RUN_URL}*
+          ISSUE_EOF
+          )
+
+          EXISTING=$(gh issue list --label "claude-review" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" \
+              --title "🔐 Claude Weekly Security Review — ${DATE}" \
+              --body "$BODY"
+            gh issue comment "$EXISTING" \
+              --body "♻️ Обновлено скан от ${DATE} — [запуск](${RUN_URL}), **${FINDINGS}** находок."
+            echo "Обновлён issue #${EXISTING}"
+          else
+            gh issue create \
+              --title "🔐 Claude Weekly Security Review — ${DATE}" \
+              --body "$BODY" \
+              --label "security,claude-review"
+            echo "Создан новый issue"
+          fi
+
+      # Если находок нет — закрываем старый issue если он был
+      - name: Close stale issue if no findings
+        if: steps.review.outputs.findings-count == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --label "claude-review" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "✅ Скан $(date -u '+%Y-%m-%d') — находок не обнаружено. Закрываю."
+            gh issue close "$EXISTING"
+            echo "Закрыт issue #${EXISTING} — находок нет"
+          else
+            echo "Находок нет, открытых issues нет — всё чисто ✅"
+          fi
+
+      # Step Summary с итогом
+      - name: Write summary
+        if: always()
+        env:
+          FINDINGS: ${{ steps.review.outputs.findings-count }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          echo "## 🤖 Claude Weekly Security Review" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Параметр | Значение |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Дата | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Находок | ${FINDINGS:-не определено} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Артефакт | [JSON-отчёт](${RUN_URL}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Подробности — в GitHub Issue с label \`claude-review\` или в артефактах_" >> $GITHUB_STEP_SUMMARY

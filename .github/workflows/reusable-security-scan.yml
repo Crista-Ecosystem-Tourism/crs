@@ -1,11 +1,12 @@
 # Переиспользуемый security-сканер для всех репо экосистемы.
 # Вызывается из crs (на push/PR/cron) и из дочерних репо (на push/PR).
-# Результаты заливаются в Security → Code scanning alerts ВЫЗЫВАЮЩЕГО репо.
+#
+# Результаты: Actions → конкретный запуск → вкладка "Summary" (Step Summary).
+# GitHub Advanced Security (GHAS) НЕ требуется — работает на бесплатном плане с приватными репо.
 #
 # Политика блокировки:
-# - Trivy: блокируем только CRITICAL/HIGH с доступным фиксом (ignore-unfixed),
-#          MEDIUM/LOW идут в отчёт без блокировки.
-# - Semgrep: блокируем findings уровня ERROR.
+# - Trivy: CRITICAL/HIGH с доступным фиксом (ignore-unfixed) → exit 1.
+# - Semgrep: findings уровня ERROR → exit 1.
 
 name: Reusable — security scan (Trivy + Semgrep)
 
@@ -17,29 +18,31 @@ jobs:
     name: Trivy (deps + secrets + IaC)
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
       contents: read
-      actions: read
     steps:
       - uses: actions/checkout@v4
 
-      # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) — для Security tab. Не валит CI.
-      - name: Trivy — full report (SARIF)
+      # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) → Step Summary. Не валит CI.
+      - name: Trivy — full report → Step Summary
         uses: aquasecurity/trivy-action@v0.32.0
         with:
           scan-type: fs
           scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
+          format: table
           severity: CRITICAL,HIGH,MEDIUM
           exit-code: '0'
+        env:
+          TRIVY_FORMAT: table
 
-      - name: Upload Trivy SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+      # Пишем итог в Step Summary
+      - name: Write Trivy summary
         if: always()
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy
+        run: |
+          echo "## 🔍 Trivy — deps · secrets · IaC" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Severity filter: **CRITICAL · HIGH · MEDIUM**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See full output in the job log above ↑" >> $GITHUB_STEP_SUMMARY
 
       # 2) Блокирующий гейт — только фиксируемые CRITICAL/HIGH. Валит CI.
       - name: Trivy — blocking gate (CRITICAL/HIGH, fixable)
@@ -56,15 +59,15 @@ jobs:
     name: Semgrep (code vulnerabilities)
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
       contents: read
-      actions: read
     container:
       image: semgrep/semgrep
     steps:
       - uses: actions/checkout@v4
 
+      # Сохраняем вывод в файл чтобы потом положить в Step Summary
       - name: Semgrep scan (--error → блокирует на ERROR)
+        id: semgrep
         run: |
           semgrep scan \
             --config p/python \
@@ -73,14 +76,24 @@ jobs:
             --config p/docker \
             --config p/secrets \
             --config p/owasp-top-ten \
-            --sarif \
-            --output semgrep-results.sarif \
+            --text \
+            --severity ERROR \
             --error \
-            --severity ERROR
+            2>&1 | tee /tmp/semgrep-out.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
 
-      - name: Upload Semgrep SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Write Semgrep summary
         if: always()
-        with:
-          sarif_file: semgrep-results.sarif
-          category: semgrep
+        shell: sh
+        run: |
+          echo "## 🔍 Semgrep — code vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -40 /tmp/semgrep-out.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      # Propagate non-zero exit (блокировка CI)
+      - name: Fail if Semgrep found errors
+        if: steps.semgrep.outputs.exit_code != '0'
+        run: exit 1
