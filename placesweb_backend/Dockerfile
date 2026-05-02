@@ -33,6 +33,10 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
+RUN adduser --disabled-password --no-create-home --gecos "" appuser \
+ && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8003
 
 CMD ["uvicorn", "app.api.routes:app", "--host", "0.0.0.0", "--port", "8003"]
