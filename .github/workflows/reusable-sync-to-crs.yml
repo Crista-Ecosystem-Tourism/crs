@@ -51,6 +51,9 @@ jobs:
       - name: Commit и push в crs (с ретраями на случай гонки)
         env:
           TARGET: ${{ inputs.target_dir }}
+          # Вынесено в env: чтобы не использовать ${{ }} прямо в run: (shell injection lint)
+          SOURCE_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           cd crs
@@ -61,7 +64,7 @@ jobs:
             echo "Нет изменений — пуш не нужен."
             exit 0
           fi
-          git commit -m "chore(sync): update ${TARGET} from ${{ github.repository }} @ ${GITHUB_SHA:0:7}"
+          git commit -m "chore(sync): update ${TARGET} from ${SOURCE_REPO} @ ${SOURCE_SHA:0:7}"
 
           # До 6 попыток с rebase — на случай параллельных пушей из других сервисных репо
           for attempt in 1 2 3 4 5 6; do

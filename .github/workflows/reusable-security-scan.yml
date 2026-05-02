@@ -25,14 +25,13 @@ jobs:
       # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) → Step Summary. Не валит CI.
       - name: Trivy — full report → Step Summary
         uses: aquasecurity/trivy-action@v0.32.0
+        continue-on-error: true
         with:
           scan-type: fs
           scan-ref: .
           format: table
           severity: CRITICAL,HIGH,MEDIUM
-          exit-code: '0'
-        env:
-          TRIVY_FORMAT: table
+          exit-code: 0
 
       # Пишем итог в Step Summary
       - name: Write Trivy summary
@@ -52,7 +51,7 @@ jobs:
           scan-ref: .
           format: table
           severity: CRITICAL,HIGH
-          exit-code: '1'
+          exit-code: 1
           ignore-unfixed: true
 
   semgrep:
@@ -65,10 +64,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Сохраняем вывод в файл чтобы потом положить в Step Summary
+      # Сохраняем вывод в файл чтобы потом положить в Step Summary.
+      # Используем $? вместо ${PIPESTATUS[0]} — совместимо с Alpine sh.
       - name: Semgrep scan (--error → блокирует на ERROR)
         id: semgrep
+        shell: sh
         run: |
+          set +e
           semgrep scan \
             --config p/python \
             --config p/javascript \
@@ -80,8 +82,8 @@ jobs:
             --severity ERROR \
             --error \
             2>&1 | tee /tmp/semgrep-out.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
       - name: Write Semgrep summary
         if: always()
@@ -96,4 +98,5 @@ jobs:
       # Propagate non-zero exit (блокировка CI)
       - name: Fail if Semgrep found errors
         if: steps.semgrep.outputs.exit_code != '0'
+        shell: sh
         run: exit 1
