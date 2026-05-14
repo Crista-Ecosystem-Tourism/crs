@@ -209,12 +209,12 @@ services:
 
   # ── Prometheus ──────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:latest
+    build:
+      context: ./monitoring/prometheus
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:9090:9090"
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
