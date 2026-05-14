@@ -21,7 +21,7 @@
         "overrides": []
       },
       "targets": [
-        { "expr": "up{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A", "instant": true }
+        { "expr": "probe_success{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A", "instant": true }
       ]
     },
     {
@@ -34,7 +34,7 @@
         "overrides": []
       },
       "targets": [
-        { "expr": "scrape_duration_seconds{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A" }
+        { "expr": "probe_duration_seconds{job=\"app-health\"}", "legendFormat": "{{instance}}", "refId": "A" }
       ]
     },
     {

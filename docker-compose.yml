@@ -207,6 +207,12 @@ services:
       - suitcase_backend
       - data_backend
 
+  # ── Blackbox exporter (пробы HTTP /health с JSON ─────────
+  blackbox-exporter:
+    build:
+      context: ./monitoring/blackbox
+    restart: unless-stopped
+
   # ── Prometheus ──────────────────────────────────────────
   prometheus:
     build:
@@ -220,10 +226,13 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=30d'
       - '--storage.tsdb.retention.size=2GB'
+    depends_on:
+      - blackbox-exporter
 
   # ── Grafana ────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:latest
+    build:
+      context: ./monitoring/grafana
     restart: unless-stopped
     ports:
       - "${COMPOSE_LAN_BIND:-127.0.0.1}:3000:3000"
@@ -232,8 +241,6 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
 
