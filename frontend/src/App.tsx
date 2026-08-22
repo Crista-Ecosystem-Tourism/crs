@@ -1,5 +1,6 @@
 import { AppProvider } from '@/context/AppContext'
 import { MainLayout } from '@/components/layout/MainLayout'
+import { AppBackdrop } from '@/components/layout/AppBackdrop'
 
 import { Routes, Route } from 'react-router-dom'
 import { LoginForm } from '@/components/auth/LoginForm'
@@ -11,6 +12,8 @@ import { SupportPage } from '@/components/support/SupportPage'
 function App() {
   return (
     <AppProvider>
+      {/* Фон общий для всех маршрутов, а не только для главной */}
+      <AppBackdrop />
       <Routes>
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<RegisterForm />} />

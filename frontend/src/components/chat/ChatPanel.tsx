@@ -57,23 +57,23 @@ export function ChatPanel() {
   }, [sendMessage])
 
   return (
-    <div className="h-full flex flex-col bg-surface/50 backdrop-blur-xl rounded-2xl border border-border/50 overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-border/30 bg-surface/30">
+    <div className="glass flex h-full flex-col overflow-hidden rounded-xl">
+      {/* Шапка чата */}
+      <div className="shrink-0 border-b border-hairline px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={goHome}
-            className="w-9 h-9 rounded-xl bg-surface-hover hover:bg-surface-light flex items-center justify-center transition-colors"
-            title="На главную"
+            aria-label="На главную"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-panel-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            <ArrowLeft className="w-4 h-4 text-text-secondary" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          </span>
           <div>
-            <h1 className="font-semibold text-text text-sm">AI Помощник</h1>
-            <p className="text-[10px] text-primary">В сети</p>
+            <h1 className="font-sans text-sm font-semibold text-text">Crista</h1>
+            <p className="font-sans text-[11px] text-text-muted">Собирает маршрут</p>
           </div>
         </div>
       </div>
@@ -92,7 +92,7 @@ export function ChatPanel() {
       </div>
 
       {/* Preference chips + Ticket button + Quick replies + Input */}
-      <div className="flex-shrink-0 p-3 border-t border-border/30 bg-surface/30">
+      <div className="shrink-0 border-t border-hairline p-3">
         <PreferenceChips preferences={preferences} />
 
         {/* Ticket button or hint */}
@@ -106,7 +106,7 @@ export function ChatPanel() {
             >
               <button
                 onClick={() => setTicketWidgetOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-primary to-violet-500 text-white hover:from-primary/90 hover:to-violet-500/90 transition-all shadow-md shadow-primary/20"
+                className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 font-sans text-xs font-medium text-ink-950 transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <Plane className="w-3.5 h-3.5" />
                 Купить билеты выгодно

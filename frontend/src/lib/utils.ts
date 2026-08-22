@@ -91,3 +91,21 @@ export function formatTime(time: string): string {
   return `${hour12}:${minutes} ${ampm}`
 }
 
+
+/**
+ * Русское склонение по числу: 1 блок, 2 блока, 5 блоков.
+ * Без него в интерфейсе появляется «1 блоков».
+ */
+export function plural(count: number, one: string, few: string, many: string): string {
+  const mod100 = Math.abs(count) % 100
+  const mod10 = mod100 % 10
+  if (mod100 >= 11 && mod100 <= 14) return many
+  if (mod10 === 1) return one
+  if (mod10 >= 2 && mod10 <= 4) return few
+  return many
+}
+
+/** Число вместе со склонённым словом: «3 блока» */
+export function pluralize(count: number, one: string, few: string, many: string): string {
+  return `${count} ${plural(count, one, few, many)}`
+}

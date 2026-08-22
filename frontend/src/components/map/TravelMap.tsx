@@ -1,8 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { MapContainer, TileLayer, Marker, GeoJSON, useMap } from 'react-leaflet'
 import { DivIcon } from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Share2, Loader2 } from 'lucide-react'
+import {
+  MapPin, Share2, Loader2,
+  Landmark, UtensilsCrossed, BedDouble, Trees, Drama, PartyPopper,
+  type LucideIcon,
+} from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import { Place } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -10,14 +15,21 @@ import { PlaceDetailPanel } from './PlaceDetailPanel'
 import { useMediaBreakpoint } from '@/hooks/useMediaBreakpoint'
 import 'leaflet/dist/leaflet.css'
 
-// Type icons
-const typeEmojis: Record<Place['type'], string> = {
-  attraction: '🏛️',
-  restaurant: '🍽️',
-  hotel: '🏨',
-  nature: '🌳',
-  culture: '🎭',
-  entertainment: '🎪',
+// Иконки из lucide, а не эмодзи: один набор, одна толщина штриха на всей карте.
+const typeIcon: Record<Place['type'], LucideIcon> = {
+  attraction: Landmark,
+  restaurant: UtensilsCrossed,
+  hotel: BedDouble,
+  nature: Trees,
+  culture: Drama,
+  entertainment: PartyPopper,
+}
+
+function iconMarkup(type: Place['type'], size: number): string {
+  const Icon = typeIcon[type]
+  return renderToStaticMarkup(
+    createElement(Icon, { width: size, height: size, strokeWidth: 2, color: 'currentColor' })
+  )
 }
 
 // Marker size based on user rating
@@ -26,50 +38,38 @@ function getMarkerSize(place: Place): number {
   return 36 + place.userRating * 4 // 40..56
 }
 
-// Marker border color based on user rating
+// Цвет глифа по личной оценке места
 function getRatingColor(rating?: number): string {
-  if (!rating) return 'border-gray-200'
-  if (rating >= 4) return 'border-green-400'
-  if (rating >= 3) return 'border-yellow-400'
-  return 'border-orange-400'
+  if (!rating) return '#B8B3CC'
+  if (rating >= 4) return 'var(--brand-teal-300)'
+  if (rating >= 3) return '#E3C878'
+  return '#E39A78'
 }
 
-function getRatingBg(rating?: number): string {
-  if (!rating) return 'bg-white'
-  if (rating >= 4) return 'bg-green-50'
-  if (rating >= 3) return 'bg-yellow-50'
-  return 'bg-orange-50'
-}
-
-// Create custom marker icon
+// Пин: тёмное стекло с тиловым акцентом у выбранной точки.
 function createMarkerIcon(place: Place) {
-  const emoji = typeEmojis[place.type]
   const isSelected = place.selected
   const size = getMarkerSize(place)
-  const ratingBorder = isSelected ? 'border-primary' : getRatingColor(place.userRating)
-  const ratingBg = isSelected ? 'bg-primary' : getRatingBg(place.userRating)
+  const glyph = iconMarkup(place.type, Math.round(size * 0.42))
+
+  const shell = isSelected
+    ? 'background:var(--brand-teal-500);color:var(--ink-950);border-color:rgba(255,255,255,.85)'
+    : `background:rgba(20,16,31,.88);color:${getRatingColor(place.userRating)};border-color:rgba(255,255,255,.22)`
 
   return new DivIcon({
     className: 'custom-marker',
     html: `
-      <div class="relative group cursor-pointer">
-        <div style="width:${size}px;height:${size}px" class="rounded-full ${ratingBg} ${isSelected ? 'ring-2 ring-white' : ''}
-          shadow-lg flex items-center justify-center text-lg border-2 ${ratingBorder}
-          transition-transform hover:scale-110">
-          ${emoji}
+      <div class="relative cursor-pointer">
+        <div style="width:${size}px;height:${size}px;${shell}"
+          class="flex items-center justify-center rounded-full border-2 shadow-lg backdrop-blur-sm transition-transform hover:scale-110">
+          ${glyph}
         </div>
-        ${isSelected ? `
-          <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-            </svg>
-          </div>
-        ` : ''}
-        ${place.userRating ? `
-          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1 py-0 rounded bg-amber-400 text-white text-[9px] font-bold">
-            ${place.userRating}
-          </div>
-        ` : ''}
+        ${
+          place.userRating
+            ? `<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full px-1.5 text-[9px] font-bold"
+                 style="background:var(--brand-teal-500);color:var(--ink-950)">${place.userRating}</div>`
+            : ''
+        }
       </div>
     `,
     iconSize: [size, size],
@@ -121,7 +121,7 @@ export function TravelMap() {
   const {
     places, mapCenter, mapZoom, selectedPlace, setSelectedPlace,
     routeGeoJSON, graphGeoJSON, buildingGraph, buildPlaceGraph,
-    openModal,
+    openModal, theme,
   } = useApp()
   const breakpoint = useMediaBreakpoint()
   const selectedCount = places.filter(p => p.selected).length
@@ -158,11 +158,17 @@ export function TravelMap() {
         center={mapCenter}
         zoom={mapZoom}
         className="h-full w-full"
-        style={{ background: 'var(--color-surface)' }}
+        style={{ background: 'var(--ink-900)' }}
       >
+        {/* Подложка следует теме: светлая карта в тёмном интерфейсе спорит со стеклом */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={theme}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url={
+            theme === 'dark'
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+          }
         />
 
         <MapUpdater center={mapCenter} zoom={mapZoom} selectedPlace={selectedPlace} />

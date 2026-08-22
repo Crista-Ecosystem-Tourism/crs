@@ -125,7 +125,7 @@ function InfiniteColumn({
 
             <div className="absolute bottom-0 left-0 right-0 p-5 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
               <div className="flex items-center justify-between mb-2">
-                <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider border border-white/10">
+                <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider border border-hairline">
                   {item.type}
                 </span>
                 <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -165,7 +165,7 @@ export function InspirationBoard({ onSelect }: InspirationBoardProps) {
             Исследуйте мир и создавайте маршруты с AI
           </p>
         </div>
-        <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-surface/30 backdrop-blur-md border border-white/10 text-sm font-medium text-text-secondary">
+        <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-surface/30 backdrop-blur-md border border-hairline text-sm font-medium text-text-secondary">
           <Sparkles className="w-4 h-4 text-primary" />
           <span>Вдохновение</span>
         </div>

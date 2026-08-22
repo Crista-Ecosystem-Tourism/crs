@@ -43,7 +43,7 @@ function PlanCard({ plan, isSelected, onSelect, isAnnual }: {
         'relative p-6 rounded-[28px] border-2 cursor-pointer transition-all duration-300 flex flex-col h-full',
         isSelected
           ? 'border-[#1a1a1a] bg-white shadow-2xl'
-          : 'border-black/[0.06] bg-white/50 hover:border-black/20 hover:bg-white shadow-sm',
+          : 'border-black/[0.06] bg-panel0 hover:border-black/20 hover:bg-white shadow-sm',
         isPremium && isSelected && 'ring-4 ring-amber-400/20'
       )}
       onClick={onSelect}

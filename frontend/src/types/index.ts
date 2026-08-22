@@ -218,3 +218,4 @@ export type MainView =
   | 'community'
   | 'placeByPhoto'
   | 'toursGlamping'
+  | 'game'

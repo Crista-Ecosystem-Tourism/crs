@@ -1,12 +1,22 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Plus, Search, MessageSquare, ArrowLeft } from 'lucide-react'
+import { Plus, Search, MessageSquare, ArrowLeft, MapPin } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
-import { formatRelativeDate } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
+import { Button } from '@/components/ui/button'
+import { formatRelativeDate, cn } from '@/lib/utils'
 
 interface ChatListPanelProps {
   onBack: () => void
+}
+
+/** Превью чата не должно показывать сырую разметку из ответа модели */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`#>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function ChatListPanel({ onBack }: ChatListPanelProps) {
@@ -14,129 +24,147 @@ export function ChatListPanel({ onBack }: ChatListPanelProps) {
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
-    ? chatHistory.filter(c =>
-        c.title.toLowerCase().includes(search.toLowerCase())
-      )
+    ? chatHistory.filter((c) => c.title.toLowerCase().includes(search.toLowerCase()))
     : chatHistory
 
-  const getLastMessage = (chat: typeof chatHistory[0]): string => {
+  const getLastMessage = (chat: (typeof chatHistory)[0]): string => {
     if (!chat.messages || chat.messages.length === 0) {
-      // Show destination or title as fallback when messages not loaded yet
       return chat.destination || chat.title || 'Нажмите, чтобы загрузить'
     }
     const last = chat.messages[chat.messages.length - 1]
     if (!last.content) return chat.title || 'Нет сообщений'
-    return last.content.length > 80
-      ? last.content.slice(0, 80) + '...'
-      : last.content
+    const clean = stripMarkdown(last.content)
+    return clean.length > 90 ? `${clean.slice(0, 90)}...` : clean
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex-shrink-0 p-4 pb-3 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 text-text-secondary" />
-            </button>
-            <h1 className="text-xl font-bold text-text">Чаты</h1>
-            <span className="text-xs text-text-muted bg-surface-light rounded-full px-2 py-0.5">
-              {chatHistory.length}
-            </span>
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 px-5 pt-6 sm:px-6">
+        <div className="mx-auto max-w-[900px]">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <IconButton label="Назад" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+                <ArrowLeft />
+              </IconButton>
+              <h1 className="font-display text-2xl font-semibold text-text">Чаты</h1>
+              <Chip size="sm" className="tabular">{chatHistory.length}</Chip>
+            </div>
+            <Button size="sm" onClick={() => newChat()}>
+              <Plus />
+              Новый чат
+            </Button>
           </div>
-          <button
-            onClick={() => newChat()}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Новый чат
-          </button>
-        </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Поиск по чатам..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-surface-light text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-          />
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+              aria-hidden="true"
+            />
+            <label htmlFor="chat-search" className="sr-only">Поиск по чатам</label>
+            <input
+              id="chat-search"
+              type="text"
+              placeholder="Поиск по чатам"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-11 w-full rounded-md border border-hairline bg-panel pl-10 pr-4 font-sans text-sm text-text outline-none transition placeholder:text-text-muted focus:border-primary/40 focus:ring-2 focus:ring-accent"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Chat List */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {filtered.length > 0 ? (
-          <div className="space-y-1.5">
-            {filtered.map((chat, i) => (
-              <motion.button
-                key={chat.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => loadChat(chat.id)}
-                className={cn(
-                  'w-full text-left p-3.5 rounded-xl transition-all group',
-                  currentChatId === chat.id
-                    ? 'bg-primary/10 border border-primary/20'
-                    : 'hover:bg-surface-light border border-transparent'
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
-                    currentChatId === chat.id
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-surface-hover text-text-muted group-hover:bg-surface-hover'
-                  )}>
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h3 className={cn(
-                        'text-sm font-semibold truncate',
-                        currentChatId === chat.id ? 'text-primary' : 'text-text'
-                      )}>
-                        {chat.title}
-                      </h3>
-                      <span className="text-[11px] text-text-muted whitespace-nowrap flex-shrink-0">
-                        {formatRelativeDate(chat.createdAt)}
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+        <div className="mx-auto max-w-[900px]">
+          {filtered.length > 0 ? (
+            <div className="space-y-2">
+              {filtered.map((chat) => {
+                const active = currentChatId === chat.id
+                return (
+                  <button
+                    key={chat.id}
+                    onClick={() => loadChat(chat.id)}
+                    className={cn(
+                      'group w-full rounded-lg border p-4 text-left transition duration-base ease-standard',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                      active
+                        ? 'border-primary/40 bg-primary/[0.09]'
+                        : 'border-hairline bg-panel hover:border-hairline-2 hover:bg-panel-2'
+                    )}
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <span
+                        className={cn(
+                          'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-colors',
+                          active
+                            ? 'bg-primary/20 text-primary'
+                            : 'bg-panel-2 text-text-muted group-hover:text-text-secondary'
+                        )}
+                      >
+                        <MessageSquare className="h-5 w-5" aria-hidden="true" />
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="mb-1 flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              'truncate font-display text-lg font-semibold leading-tight',
+                              active ? 'text-primary' : 'text-text'
+                            )}
+                          >
+                            {chat.title}
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap font-sans text-[11px] text-text-muted">
+                            {formatRelativeDate(chat.createdAt)}
+                          </span>
+                        </span>
+
+                        {chat.destination && (
+                          <span className="mb-1 flex items-center gap-1.5 font-sans text-xs text-text-muted">
+                            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{chat.destination}</span>
+                          </span>
+                        )}
+
+                        <span className="line-clamp-2 font-sans text-xs leading-relaxed text-text-secondary">
+                          {getLastMessage(chat)}
+                        </span>
                       </span>
                     </div>
-                    <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                      {getLastMessage(chat)}
-                    </p>
-                  </div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        ) : search.trim() ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <Search className="w-10 h-10 text-text-muted/30 mb-3" />
-            <p className="text-sm text-text-secondary">Ничего не найдено</p>
-            <p className="text-xs text-text-muted mt-1">Попробуйте другой запрос</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <MessageSquare className="w-10 h-10 text-text-muted/30 mb-3" />
-            <p className="text-sm text-text-secondary">Чатов пока нет</p>
-            <p className="text-xs text-text-muted mt-1">Создайте первый чат, чтобы начать</p>
-            <button
-              onClick={() => newChat()}
-              className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Новый чат
-            </button>
-          </div>
-        )}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <GlassPanel className="flex flex-col items-center justify-center px-8 py-14 text-center">
+              {search.trim() ? (
+                <>
+                  <Search className="mb-3 h-9 w-9 text-text-muted" aria-hidden="true" />
+                  <p className="font-sans text-sm text-text-secondary">
+                    По запросу «{search}» ничего не нашлось
+                  </p>
+                  <button
+                    onClick={() => setSearch('')}
+                    className="mt-2 font-sans text-sm text-link transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Показать все чаты
+                  </button>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="mb-3 h-9 w-9 text-text-muted" aria-hidden="true" />
+                  <p className="font-sans text-sm text-text-secondary">Чатов пока нет</p>
+                  <p className="mt-1 font-sans text-xs text-text-muted">
+                    Опишите поездку, и Crista соберёт маршрут
+                  </p>
+                  <Button className="mt-4" onClick={() => newChat()}>
+                    <Plus />
+                    Новый чат
+                  </Button>
+                </>
+              )}
+            </GlassPanel>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -136,7 +136,7 @@ export function SupportPage() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background text-text font-sans selection:bg-primary/30">
+    <div className="h-screen w-screen overflow-hidden text-text font-sans selection:bg-primary/30">
       {/* Global Background Gradient */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-60 pointer-events-none" />
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-accent/20 via-background to-background opacity-60 pointer-events-none" />
@@ -146,7 +146,7 @@ export function SupportPage() {
 
         <main className="flex-1 relative h-full min-w-0 overflow-auto">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border">
+          <div className="sticky top-0 z-10 border-b border-hairline bg-header backdrop-blur-md">
             <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
               <button
                 onClick={() => navigate(-1)}

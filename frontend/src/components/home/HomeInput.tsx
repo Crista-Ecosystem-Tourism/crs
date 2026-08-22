@@ -150,7 +150,7 @@ export function HomeInput({ onSend }: HomeInputProps) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="text-text-muted hover:text-text hover:bg-white/50 rounded-full hidden sm:flex w-8 h-8"
+                  className="text-text-muted hover:text-text hover:bg-panel0 rounded-full hidden sm:flex w-8 h-8"
                 >
                   <Mic className="w-4 h-4" />
                 </Button>

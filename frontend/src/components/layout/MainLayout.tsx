@@ -1,19 +1,20 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
+import { AppFrame } from './AppFrame'
 import { MobileTabBar } from './MobileTabBar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { ChatListPanel } from '@/components/chat/ChatListPanel'
 import { TravelMap } from '@/components/map/TravelMap'
 import { PlaceDetailPanel } from '@/components/map/PlaceDetailPanel'
-import { InspirationBoard } from '@/components/home/InspirationBoard'
+import { HomeHub } from '@/components/home/HomeHub'
 import { SavedRoutesPanel } from '@/components/routes/SavedRoutesPanel'
 import { DataPanel } from '@/components/data/DataPanel'
-import { SuitcasePanel } from '@/components/suitcase/SuitcasePanel'
+import { MyTripsPanel } from '@/components/trips/MyTripsPanel'
 import { InspirationPanel } from '@/components/inspiration/InspirationPanel'
 import { CommunityPanel } from '@/components/community/CommunityPanel'
+import { GamePanel } from '@/components/game/GamePanel'
 import { PlaceByPhotoPanel } from '@/components/place/PlaceByPhotoPanel'
 import { ToursGlampingPanel } from '@/components/tours/ToursGlampingPanel'
-import { HomeInput } from '@/components/home/HomeInput'
 import { AuthModal } from '@/components/modals/AuthModal'
 import { SubscriptionModal } from '@/components/modals/SubscriptionModal'
 import { PaymentModal } from '@/components/modals/PaymentModal'
@@ -42,127 +43,55 @@ export function MainLayout() {
   const isHome = !currentChatId
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background text-text font-sans selection:bg-primary/30">
-      {/* Global Background Gradient */}
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-60 pointer-events-none" />
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-accent/20 via-background to-background opacity-60 pointer-events-none" />
+    <div className="h-screen w-screen overflow-hidden text-text font-sans selection:bg-primary/30">
 
-      {/* Sidebar */}
-      <div className="flex h-full relative z-10">
+      <AppFrame>
         <Sidebar />
 
         {/* Main Content Area */}
         <main className="flex-1 relative h-full min-w-0">
-          <AnimatePresence mode="wait">
             {isHome && mainView === 'chatList' ? (
-              <motion.div
-                key="chat-list"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <ChatListPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'inspiration' ? (
-              <motion.div
-                key="inspiration"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <InspirationPanel onBack={() => setMainView('saved')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'data' ? (
-              <motion.div
-                key="data"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <DataPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
+            ) : isHome && mainView === 'game' ? (
+              <div className="w-full h-full crista-view">
+                <GamePanel onBack={() => setMainView('home')} />
+              </div>
             ) : isHome && mainView === 'community' ? (
-              <motion.div
-                key="community"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <CommunityPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'placeByPhoto' ? (
-              <motion.div
-                key="place-by-photo"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <PlaceByPhotoPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'toursGlamping' ? (
-              <motion.div
-                key="tours-glamping"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <ToursGlampingPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'saved' ? (
-              <motion.div
-                key="saved-routes"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
+              <div className="w-full h-full crista-view">
                 <SavedRoutesPanel onBack={() => setMainView('home')} />
-              </motion.div>
+              </div>
             ) : isHome && mainView === 'suitcase' ? (
-              <motion.div
-                key="suitcase"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
-              >
-                <SuitcasePanel onBack={() => setMainView('home')} />
-              </motion.div>
+              <div className="w-full h-full crista-view">
+                <MyTripsPanel onBack={() => setMainView('home')} />
+              </div>
             ) : isHome ? (
-              <motion.div
-                key="home"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, scale: 0.98, filter: "blur(10px)" }}
-                transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                className="w-full h-full relative z-0"
-              >
-                <InspirationBoard onSelect={(place) => handleHomeInput(`Хочу посетить ${place}`)} />
-                <HomeInput onSend={handleHomeInput} />
-              </motion.div>
+<div className="w-full h-full relative z-0 crista-view">
+                <HomeHub onSend={handleHomeInput} />
+              </div>
             ) : (
-              <motion.div
-                key="chat-layout"
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                className="w-full h-full"
-              >
+<div className="w-full h-full crista-view">
                 {/* Mobile layout */}
                 {breakpoint === 'mobile' && (
                   <div className="flex flex-col w-full h-full">
@@ -215,8 +144,8 @@ export function MainLayout() {
                     <div className="w-[55%] h-full flex-shrink-0 flex flex-col">
                       <ChatPanel />
                     </div>
-                    <div className="w-[45%] h-full relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                      <div className="absolute inset-0 pointer-events-none z-10 rounded-2xl ring-1 ring-inset ring-white/10" />
+                    <div className="w-[45%] h-full relative rounded-2xl overflow-hidden border border-hairline shadow-2xl">
+                      <div className="absolute inset-0 pointer-events-none z-10 rounded-2xl ring-1 ring-inset ring-hairline" />
                       <TravelMap />
                     </div>
                   </div>
@@ -253,17 +182,16 @@ export function MainLayout() {
                     </div>
 
                     {/* Map */}
-                    <div className="flex-1 h-full relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                      <div className="absolute inset-0 pointer-events-none z-10 rounded-3xl ring-1 ring-inset ring-white/10" />
+                    <div className="flex-1 h-full relative rounded-3xl overflow-hidden border border-hairline shadow-2xl">
+                      <div className="absolute inset-0 pointer-events-none z-10 rounded-3xl ring-1 ring-inset ring-hairline" />
                       <TravelMap />
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </main>
-      </div>
+      </AppFrame>
 
       {/* Modals */}
       <AuthModal />

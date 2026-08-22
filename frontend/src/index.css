@@ -3,40 +3,111 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default) */
+  /* Design tokens — Crista Design System (synced from claude.ai/design) */
   :root {
-    --color-background: #ffffff;
-    --color-surface: #f9fafb;
-    --color-surface-light: #f3f4f6;
-    --color-surface-hover: #e5e7eb;
-    --color-border: #e5e7eb;
-    --color-border-light: #d1d5db;
-    --color-primary: #10a37f;
-    --color-primary-hover: #0e906f;
-    --color-text: #111827;
-    --color-text-secondary: #6b7280;
-    --color-text-muted: #9ca3af;
-    --color-accent: #8b5cf6;
-    --color-warning: #f59e0b;
-    --color-error: #ef4444;
+    /* brand */
+    --brand-teal-300: #7ED3E0; --brand-teal-400: #5BC4F7; --brand-teal-500: #3BA8B8;
+    --brand-teal-600: #1A8A9C; --brand-teal-700: #146B7A;
+    --ink-950: #0E1015; --ink-900: #14171D; --ink-850: #1B1F27;
+    --violet-800: #1C1730; --violet-700: #241D3D; --violet-600: #2E2650;
+    --violet-glow-500: #6B5BFF; --violet-glow-400: #8B7CFF; --violet-glow-300: #ACA1FF;
+    --white-08: rgba(255,255,255,.08); --white-12: rgba(255,255,255,.12);
+    --white-60: rgba(255,255,255,.6); --white-40: rgba(255,255,255,.4);
+    --success-500: oklch(0.72 0.16 155); --warning-500: oklch(0.8 0.15 80); --danger-500: oklch(0.62 0.21 25);
+
+    /* radius / spacing */
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 20px; --radius-xl: 28px; --radius-full: 9999px;
+
+    /* typography */
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-accent: 'Old Standard TT', Georgia, serif;
+    --font-ui: 'Golos Text', 'Golos UI', -apple-system, sans-serif;
+    --text-display-xl: 80px; --text-display-lg: 64px; --text-h1: 48px; --text-h2: 32px; --text-h3: 24px;
+    --text-body-lg: 18px; --text-body: 16px; --text-small: 14px; --text-caption: 12px;
+    --lh-tight: 1.05; --lh-heading: 1.15; --lh-body: 1.5; --lh-relaxed: 1.65;
+    --tracking-tight: -0.02em; --tracking-normal: 0; --tracking-wide: 0.04em;
+    --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700;
+
+    /* motion */
+    --ease-standard: cubic-bezier(.4,0,.2,1); --ease-out: cubic-bezier(0,0,.2,1);
+    /* Только для наградных моментов Игры (открытие страны, 100% фокуса).
+       В обычном интерфейсе используйте --ease-standard: отскок там читается дёшево. */
+    --ease-bounce: cubic-bezier(.34,1.56,.64,1);
+    --duration-fast: 150ms; --duration-base: 200ms; --duration-slow: 250ms; --duration-bounce: 500ms; --duration-pulse: 2400ms;
+
+    /* Светлая тема: то же стекло, что и в тёмной, но по светлой стороне.
+       Поверхности полупрозрачные, фон тёплый лавандовый, а не плоский белый. */
+    --color-bg: radial-gradient(ellipse at 20% 0%, #E7E1F5 0%, #F2EEF9 45%, #EFE9F2 100%);
+    --color-bg-solid: #F2EEF9;
+    --color-surface: rgba(255,255,255,.42);
+    --color-surface-raised: rgba(255,255,255,.62);
+    --color-surface-hover: rgba(255,255,255,.78);
+    --color-border: rgba(255,255,255,.55);
+    --color-border-strong: rgba(90,74,140,.18);
+    --color-text-primary: #1F1830;
+    --color-text-secondary: #4A4263;
+    /* 5.07:1 на светлом фоне: плейсхолдеры и подписи обязаны читаться */
+    --color-text-muted: #6B6683;
+    --color-accent: var(--brand-teal-500);
+    --color-accent-hover: var(--brand-teal-400);
+    --color-accent-active: var(--brand-teal-600);
+    --color-accent-gradient: linear-gradient(135deg, var(--brand-teal-400) 0%, var(--brand-teal-500) 55%, var(--brand-teal-600) 100%);
+    --color-link: var(--brand-teal-700);
+    --color-glow: var(--violet-glow-500);
+    --color-glow-soft: #D9D4FF;
+    --color-success: var(--success-500); --color-warning: var(--warning-500); --color-danger: var(--danger-500);
+
+    --glass-bg: rgba(255,255,255,.38); --glass-bg-strong: rgba(255,255,255,.55);
+    --glass-blur: 28px; --glass-blur-reduced: 16px;
+    --glass-border: 1px solid rgba(255,255,255,.6); --glass-shadow: 0 12px 40px rgba(74,58,120,.14);
+    --shadow-sm: 0 2px 8px rgba(74,58,120,.08); --shadow-md: 0 8px 24px rgba(74,58,120,.12); --shadow-lg: 0 16px 48px rgba(74,58,120,.16);
+    --glow-ring: 0 0 0 3px rgba(107,91,255,.35);
+    --glass-photo-bg: rgba(255,255,255,.24); --glass-photo-border: 1px solid rgba(255,255,255,.5);
+    --glass-sheen: rgba(255,255,255,.85); --glass-sheen-strong: rgba(255,255,255,.95);
+    --glass-underline: rgba(90,74,140,.1);
+    --frame-bg: rgba(255,255,255,.66); --frame-border: rgba(255,255,255,.7);
+    --header-bg: rgba(246,244,252,.82);
+    --panel-1: rgba(31,24,48,.045); --panel-2: rgba(31,24,48,.075); --panel-3: rgba(31,24,48,.12);
+    --hairline-1: rgba(31,24,48,.1); --hairline-2: rgba(31,24,48,.17); --hairline-3: rgba(31,24,48,.26);
+    --scrim-rgb: 242, 238, 249;
   }
 
-  /* Dark theme */
+  /* dark theme — flagship */
   .dark {
-    --color-background: #0d0d0d;
-    --color-surface: #171717;
-    --color-surface-light: #1e1e1e;
-    --color-surface-hover: #2a2a2a;
-    --color-border: #2f2f2f;
-    --color-border-light: #3f3f3f;
-    --color-primary: #10a37f;
-    --color-primary-hover: #0e906f;
-    --color-text: #ececec;
-    --color-text-secondary: #9b9b9b;
-    --color-text-muted: #8a8a8a;
-    --color-accent: #ab68ff;
-    --color-warning: #f59e0b;
-    --color-error: #ef4444;
+    --color-bg: linear-gradient(180deg, var(--ink-950) 0%, var(--ink-900) 100%);
+    --color-bg-solid: var(--ink-950);
+    --color-surface: rgba(255,255,255,.06);
+    --color-surface-raised: rgba(255,255,255,.1);
+    --color-surface-hover: rgba(255,255,255,.14);
+    --color-border: var(--white-08);
+    --color-border-strong: var(--white-12);
+    --color-text-primary: #F2F4F7;
+    --color-text-secondary: #B6BCC6;
+    /* 5.6:1 на ink-950. Прежний #7A7593 давал 4.48 и не проходил WCAG AA */
+    --color-text-muted: #A8AEBA;
+    --color-accent: var(--brand-teal-500);
+    --color-accent-hover: var(--brand-teal-400);
+    --color-accent-active: var(--brand-teal-600);
+    --color-accent-gradient: linear-gradient(135deg, var(--brand-teal-400) 0%, var(--brand-teal-500) 55%, var(--brand-teal-600) 100%);
+    /* Тил на стекле: 6:1 против 3.7 у teal-500 */
+    --color-link: var(--brand-teal-300);
+    --color-glow: var(--violet-glow-500);
+    --color-glow-soft: var(--violet-glow-400);
+    --color-success: var(--success-500); --color-warning: var(--warning-500); --color-danger: var(--danger-500);
+
+    --glass-bg: rgba(255,255,255,.055); --glass-bg-strong: rgba(255,255,255,.09);
+    --glass-blur: 24px; --glass-blur-reduced: 14px;
+    --glass-border: 1px solid rgba(255,255,255,.14); --glass-shadow: 0 8px 32px rgba(0,0,0,.28);
+    --shadow-sm: 0 2px 8px rgba(11,10,23,.3); --shadow-md: 0 8px 24px rgba(11,10,23,.4); --shadow-lg: 0 16px 48px rgba(11,10,23,.5);
+    --glow-ring: 0 0 0 3px rgba(107,91,255,.35);
+    --glass-photo-bg: rgba(255,255,255,.07); --glass-photo-border: 1px solid rgba(255,255,255,.2);
+    --glass-sheen: rgba(255,255,255,.14); --glass-sheen-strong: rgba(255,255,255,.24);
+    --glass-underline: rgba(0,0,0,.35);
+    --frame-bg: rgba(28,32,40,.55); --frame-border: rgba(255,255,255,.16);
+    --header-bg: rgba(24,28,35,.6);
+    --panel-1: rgba(255,255,255,.06); --panel-2: rgba(255,255,255,.1); --panel-3: rgba(255,255,255,.17);
+    --hairline-1: rgba(255,255,255,.1); --hairline-2: rgba(255,255,255,.18); --hairline-3: rgba(255,255,255,.28);
+    --scrim-rgb: 14, 16, 21;
   }
 
   * {
@@ -44,16 +115,55 @@
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-text);
+    background: var(--color-bg);
+    background-attachment: fixed;
+    color: var(--color-text-primary);
     transition: background-color 0.2s, color 0.2s;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Custom scrollbar */
+  /* Браузерные поверхности, которые мы не рисовали, но которые несут дизайн */
+  ::selection {
+    background: rgba(59, 168, 184, 0.3);
+    color: var(--color-text-primary);
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    caret-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Цифры в статистике и таблицах не должны прыгать по ширине */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes fog-pulse { 0%, 100% { opacity: .55 } 50% { opacity: .85 } }
+  @keyframes bounce-in { 0% { transform: scale(.85); opacity: 0 } 60% { transform: scale(1.04) } 100% { transform: scale(1); opacity: 1 } }
+
+  /* Появление модалок. Реализовано на CSS, а не на tailwindcss-animate:
+     плагин в проекте не установлен, и его классы были мёртвыми. */
+  @keyframes overlay-in { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes dialog-in {
+    from { opacity: 0; transform: translate(-50%, -46%) scale(.97) }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1) }
+  }
+
+  /* Скроллбар: наложением, как в macOS. Полоса не должна резать стекло,
+     поэтому она прозрачна в покое и проявляется только при наведении. */
+  * {
+    scrollbar-width: none;
+  }
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -61,8 +171,15 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--color-border-light);
-    border-radius: 9999px;
+    background-color: transparent;
+    border: 3px solid transparent;
+    border-radius: var(--radius-full);
+    background-clip: content-box;
+  }
+
+  *:hover > ::-webkit-scrollbar-thumb,
+  *:focus-within > ::-webkit-scrollbar-thumb {
+    background-color: var(--hairline-3);
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -71,10 +188,13 @@
 
   /* Leaflet popup customization */
   .leaflet-popup-content-wrapper {
-    background: var(--color-surface) !important;
-    color: var(--color-text) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+    background: var(--glass-bg-strong) !important;
+    backdrop-filter: blur(var(--glass-blur)) !important;
+    -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
+    color: var(--color-text-primary) !important;
+    border: var(--glass-border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--glass-shadow) !important;
   }
 
   .leaflet-popup-content {
@@ -94,19 +214,99 @@
     background: transparent !important;
     border: none !important;
   }
+
+  /* Подсказки на игровой карте мира */
+  .crista-map-tip {
+    background: var(--ink-850) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--radius-sm) !important;
+    color: #fff !important;
+    font-family: var(--font-ui) !important;
+    font-size: 12px !important;
+    padding: 5px 10px !important;
+    box-shadow: 0 8px 24px rgba(11, 10, 23, 0.5) !important;
+  }
+
+  .crista-map-tip::before {
+    display: none !important;
+  }
 }
 
 @layer components {
   .chat-bubble {
-    @apply relative px-4 py-3 rounded-2xl max-w-[80%];
+    @apply relative px-4 py-3 rounded-lg max-w-[80%];
   }
 
+  /* Тёмный текст на тиле: белый давал 2.8:1 и не проходил WCAG */
   .chat-bubble-user {
-    @apply bg-primary text-white ml-auto rounded-br-md;
+    @apply bg-primary text-ink-950 ml-auto rounded-br-md;
   }
 
   .chat-bubble-assistant {
-    @apply bg-surface-light text-text mr-auto rounded-bl-md;
+    @apply bg-white/[0.07] border border-white/[0.08] text-text mr-auto rounded-bl-md backdrop-blur-sm;
+  }
+
+  /* Материал стекла: помимо размытия даём толщину.
+     Блик по верхней кромке, внутренняя тень снизу и подъём насыщенности,
+     иначе панель читается как просто полупрозрачный прямоугольник. */
+  .glass {
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.6) brightness(1.04);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6) brightness(1.04);
+    border: var(--glass-border);
+    box-shadow:
+      var(--glass-shadow),
+      inset 0 1px 0 var(--glass-sheen),
+      inset 0 -1px 0 var(--glass-underline);
+  }
+
+  .glass-on-photo {
+    position: relative;
+    background: var(--glass-photo-bg);
+    backdrop-filter: blur(34px) saturate(1.7) brightness(1.05);
+    -webkit-backdrop-filter: blur(34px) saturate(1.7) brightness(1.05);
+    border: var(--glass-photo-border);
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, .42),
+      inset 0 1px 0 var(--glass-sheen-strong),
+      inset 0 -1px 0 var(--glass-underline);
+  }
+
+  /* Лист приложения: стекло с ощутимой толщиной края и тенью на сцене */
+  .app-frame {
+    background: var(--frame-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5) brightness(1.03);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5) brightness(1.03);
+    border: 1px solid var(--frame-border);
+    box-shadow:
+      0 40px 90px rgba(0, 0, 0, .5),
+      0 8px 24px rgba(0, 0, 0, .3),
+      inset 0 1px 0 var(--glass-sheen-strong),
+      inset 0 -1px 0 var(--glass-underline);
+  }
+
+  /* Плавающая панель: та же материя, но с ощутимой толщиной края */
+  .glass-raised {
+    box-shadow:
+      var(--glass-shadow),
+      0 2px 10px rgba(0, 0, 0, .25),
+      inset 0 1px 0 var(--glass-sheen-strong),
+      inset 0 -1px 0 var(--glass-underline);
+  }
+}
+
+@layer components {
+  /* Появление экрана. На CSS, а не на AnimatePresence: раньше застрявшая
+     анимация выхода блокировала монтирование следующего экрана и вешала
+     навигацию. Контент виден сразу, анимация только украшает. */
+  .crista-view {
+    animation: view-in 260ms var(--ease-out);
+  }
+
+  @keyframes view-in {
+    from { opacity: 0; transform: translateY(6px) }
+    to { opacity: 1; transform: none }
   }
 }
 
@@ -118,5 +318,48 @@
 
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Затемнение под текстом поверх фотографии. Без него текст нечитаем.
+     Цвет берётся из темы, иначе в светлой теме кадр обрывается тёмной полосой. */
+  .photo-scrim {
+    background: linear-gradient(
+      to top,
+      rgb(var(--scrim-rgb)) 0%,
+      rgba(var(--scrim-rgb), 0.72) 32%,
+      rgba(var(--scrim-rgb), 0.2) 62%,
+      transparent 100%
+    );
+  }
+
+  .photo-scrim-x {
+    background: linear-gradient(
+      to right,
+      rgb(var(--scrim-rgb)) 0%,
+      rgba(var(--scrim-rgb), 0.7) 45%,
+      rgba(var(--scrim-rgb), 0.25) 100%
+    );
+  }
+}
+
+/* Прозрачность стоит дорого и подходит не всем: даём плотную заливку */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-on-photo,
+  .leaflet-popup-content-wrapper {
+    background: var(--ink-850) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

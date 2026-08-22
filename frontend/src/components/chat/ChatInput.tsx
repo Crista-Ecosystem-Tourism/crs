@@ -86,13 +86,13 @@ export function ChatInput({ onSend, disabled, hasChipSelections, prefillText, on
       )} />
 
       <div className={cn(
-        'relative flex items-end gap-2 p-1.5 rounded-[18px] bg-surface/80 backdrop-blur-xl border border-white/10 shadow-lg transition-all',
+        'relative flex items-end gap-2 p-1.5 rounded-[18px] bg-surface/80 backdrop-blur-xl border border-hairline shadow-lg transition-all',
         isFocused && "bg-surface shadow-primary/5"
       )}>
         <Button
           variant="ghost"
           size="icon-sm"
-          className="rounded-full text-text-muted hover:text-text hover:bg-white/5 h-9 w-9 mb-0.5 ml-0.5 flex-shrink-0"
+          className="rounded-full text-text-muted hover:text-text hover:bg-panel h-9 w-9 mb-0.5 ml-0.5 flex-shrink-0"
         >
           <Paperclip className="w-4 h-4" />
         </Button>
@@ -120,7 +120,7 @@ export function ChatInput({ onSend, disabled, hasChipSelections, prefillText, on
             <Button
               variant="ghost"
               size="icon-sm"
-              className="rounded-full text-text-muted hover:text-text hover:bg-white/5 h-9 w-9"
+              className="rounded-full text-text-muted hover:text-text hover:bg-panel h-9 w-9"
             >
               <Mic className="w-4 h-4" />
             </Button>
@@ -134,7 +134,7 @@ export function ChatInput({ onSend, disabled, hasChipSelections, prefillText, on
               "rounded-full h-9 w-9 transition-all duration-300 shadow-lg",
               showSendButton
                 ? "bg-primary text-white hover:bg-primary-hover scale-100"
-                : "bg-white/5 text-text-muted scale-90 opacity-0 w-0 p-0 overflow-hidden"
+                : "bg-panel text-text-muted scale-90 opacity-0 w-0 p-0 overflow-hidden"
             )}
           >
             <Send className="w-4 h-4 ml-0.5" />
