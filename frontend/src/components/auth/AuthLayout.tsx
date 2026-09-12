@@ -77,6 +77,17 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
                             <a href="#" className="underline hover:text-text transition-colors">Условия использования</a> и{' '}
                             <a href="#" className="underline hover:text-text transition-colors">Политику конфиденциальности</a>.
                         </div>
+
+                        <div className="mt-6 text-center md:text-left">
+                            <a
+                                href="https://alba-creation.ru"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[0.7rem] tracking-wide text-text-muted/70 transition-colors hover:text-text"
+                            >
+                                Сделано IT-студией Alba Creation
+                            </a>
+                        </div>
                     </motion.div>
                 </div>
 

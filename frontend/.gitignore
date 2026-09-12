@@ -37,3 +37,6 @@ yarn-error.log*
 .claude/
 .agents/
 
+
+# graphify (local knowledge-graph tool output/cache)
+graphify-out/
