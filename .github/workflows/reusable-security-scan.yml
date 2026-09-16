@@ -64,8 +64,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Сохраняем вывод в файл чтобы потом положить в Step Summary.
-      # Используем $? вместо ${PIPESTATUS[0]} — совместимо с Alpine sh.
+      # Сохраняем вывод в файл чтобы потом положить в Step Summary. Не пускаем
+      # scanner через pipe: в POSIX sh `$?` после `| tee` — это код tee, а не
+      # Semgrep. Иначе ERROR-findings могли не заблокировать workflow.
       - name: Semgrep scan (--error → блокирует на ERROR)
         id: semgrep
         shell: sh
@@ -81,8 +82,9 @@ jobs:
             --text \
             --severity ERROR \
             --error \
-            2>&1 | tee /tmp/semgrep-out.txt
+            > /tmp/semgrep-out.txt 2>&1
           EXIT_CODE=$?
+          cat /tmp/semgrep-out.txt
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
       - name: Write Semgrep summary
