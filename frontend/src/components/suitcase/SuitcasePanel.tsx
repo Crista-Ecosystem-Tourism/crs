@@ -85,8 +85,7 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
   const [tab, setTab] = useState('trips')
   const [coords, setCoords] = useState<Record<string, { lat: number; lng: number }>>({})
 
-  if (!user) {
-    return (
+  const guestContent = !user ? (
       <div className="flex flex-col h-full bg-background overflow-hidden">
         <header className="flex-shrink-0 p-4 pb-3 border-b border-border">
           <div className="flex items-center gap-3">
@@ -122,8 +121,7 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
           </div>
         </div>
       </div>
-    )
-  }
+  ) : null
 
   const activeTrips = useMemo(() => store.trips.filter((t) => !t.isArchived), [store.trips])
   const archivedTrips = useMemo(() => store.trips.filter((t) => t.isArchived), [store.trips])
@@ -185,6 +183,10 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
   }, [store.trips])
 
   const detailTrip = detailTripId ? store.trips.find((t) => t.id === detailTripId) ?? null : null
+
+  if (guestContent) {
+    return guestContent
+  }
 
   if (detailTrip) {
     return (

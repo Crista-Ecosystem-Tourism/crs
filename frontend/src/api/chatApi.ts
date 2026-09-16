@@ -146,11 +146,12 @@ export async function sendMessage(
 export async function updateSessionTitle(
   sessionId: string,
   title: string,
+  sessionSecret?: string,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/sessions/${sessionId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, session_secret: sessionSecret }),
   })
   await handleResponse(response)
 }

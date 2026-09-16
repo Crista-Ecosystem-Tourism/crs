@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/context/AppContext'
 import { subscriptionPlans } from '@/mocks/subscriptions'
+import { isMockMode } from '@/api/chatApi'
 import { cn } from '@/lib/utils'
 
 type PaymentMethod = 'card' | 'sbp'
@@ -23,8 +24,10 @@ export function PaymentModal() {
   
   const isOpen = activeModal === 'payment'
   const plan = subscriptionPlans.find(p => p.id === selectedPlan)
+  const demoMode = isMockMode()
 
   const handlePayment = async () => {
+    if (!demoMode) return
     setIsProcessing(true)
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000))
@@ -54,6 +57,7 @@ export function PaymentModal() {
           </DialogDescription>
         </DialogHeader>
 
+        {demoMode ? <>
         {/* Payment method tabs */}
         <div className="flex gap-2 p-1 bg-surface-light rounded-lg">
           <button
@@ -150,8 +154,15 @@ export function PaymentModal() {
             `Оплатить ${plan?.priceLabel}`
           )}
         </Button>
+        </> : (
+          <div className="space-y-4 py-4">
+            <p className="rounded-lg border border-hairline bg-surface-light p-4 text-sm leading-relaxed text-text-secondary">
+              Онлайн-оплата ещё не подключена. Crista не принимает и не сохраняет данные карты до интеграции с сертифицированным платёжным провайдером.
+            </p>
+            <Button className="w-full" onClick={handleBack}>Вернуться к тарифам</Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
-

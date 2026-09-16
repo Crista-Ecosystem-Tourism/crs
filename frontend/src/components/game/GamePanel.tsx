@@ -9,8 +9,10 @@ import { CountryQuests } from './CountryQuests'
 import { TravelPassport } from './TravelPassport'
 import { DailyQuiz } from './DailyQuiz'
 import { CountryPage } from './CountryPage'
+import { OnboardingFlow } from './OnboardingFlow'
 import { useGameProgress } from '@/hooks/useGameProgress'
 import { useApp } from '@/context/AppContext'
+import { isMockMode } from '@/api/chatApi'
 import { gameCountries, findCountry, questCategoryLabel } from '@/mocks/game'
 import { cn } from '@/lib/utils'
 
@@ -47,10 +49,47 @@ function ProgressRing({ value, size = 60 }: { value: number; size?: number }) {
 }
 
 export function GamePanel({ onBack }: GamePanelProps) {
+  const { user } = useApp()
+
+  // Completion in the old world map is deliberately a demo-only interaction.
+  // Live users must never see client-local toggles presented as saved progress.
+  if (!isMockMode()) {
+    return <LiveGamePanel onBack={onBack} signedIn={Boolean(user)} />
+  }
+
+  return <DemoGamePanel onBack={onBack} userName={user?.name ?? null} />
+}
+
+function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolean }) {
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <IconButton label="Назад" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+            <ArrowLeft />
+          </IconButton>
+          <h1 className="truncate font-display text-2xl font-semibold text-text">Первое путешествие</h1>
+        </div>
+        <Chip size="sm" variant="active"><Globe2 /> Россия · пилот</Chip>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1100px] space-y-5 px-5 pb-8 pt-4 sm:px-6">
+        <OnboardingFlow signedIn={signedIn} />
+        <GlassPanel variant="flat" className="p-4 sm:p-5">
+          <p className="font-sans text-sm leading-6 text-text-secondary">
+            Следующие точки Москвы откроются после публикации их проверенных заданий и серверных правил пути.
+            Карта мира, ежедневные квизы и ручное закрытие точек сейчас доступны только в демонстрационном режиме.
+          </p>
+        </GlassPanel>
+      </div>
+    </div>
+  )
+}
+
+function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string | null }) {
   const [selectedIso, setSelectedIso] = useState<string>('RU')
   const [showPassport, setShowPassport] = useState(false)
   const [openCountry, setOpenCountry] = useState<string | null>(null)
-  const { user } = useApp()
 
   const {
     isDone, toggleQuest, countryProgress, cityProgress, categoryProgress, stats, resetProgress,
@@ -93,7 +132,7 @@ export function GamePanel({ onBack }: GamePanelProps) {
         onBack={() => setShowPassport(false)}
         countryProgress={countryProgress}
         cityProgress={cityProgress}
-        ownerName={user?.name ?? 'Путешественник'}
+        ownerName={userName ?? 'Путешественник'}
       />
     )
   }

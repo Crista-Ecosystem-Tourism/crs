@@ -4,6 +4,7 @@ import { GlassPanel, Chip, IconButton, DisplayTitle } from '@/components/ui/glas
 import { Button } from '@/components/ui/button'
 import { Img } from '@/components/ui/Img'
 import { useApp } from '@/context/AppContext'
+import { isMockMode } from '@/api/chatApi'
 
 interface PlaceByPhotoPanelProps {
   onBack: () => void
@@ -43,6 +44,10 @@ export function PlaceByPhotoPanel({ onBack }: PlaceByPhotoPanelProps) {
     if (!file || !file.type.startsWith('image/')) return
     const url = URL.createObjectURL(file)
     setPreview(url)
+    if (!isMockMode()) {
+      setState('idle')
+      return
+    }
     setState('analyzing')
     setTimeout(() => setState('done'), 1400)
   }
@@ -128,7 +133,14 @@ export function PlaceByPhotoPanel({ onBack }: PlaceByPhotoPanelProps) {
             </GlassPanel>
 
             <div className="space-y-4">
-              {state === 'analyzing' ? (
+              {!isMockMode() ? (
+                <GlassPanel className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+                  <p className="font-sans text-sm font-semibold text-text">Распознавание по фото пока недоступно</p>
+                  <p className="font-sans text-xs leading-relaxed text-text-muted">
+                    Снимок остаётся только в браузере: мы не отправляем его на сервер и не показываем выдуманные совпадения.
+                  </p>
+                </GlassPanel>
+              ) : state === 'analyzing' ? (
                 <GlassPanel className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
                   <p className="font-sans text-sm text-text-secondary">Разбираем снимок</p>

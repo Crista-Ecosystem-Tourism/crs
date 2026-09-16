@@ -812,7 +812,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApiError(null)
     setSuggestedReplies(null)
 
-    const useMocks = isMockMode() || !backendAvailable
+    const useMocks = isMockMode()
+
+    // A live build must never turn a transport failure into convincing demo
+    // travel data. Demo mode is an explicit build-time decision only.
+    if (!useMocks && !backendAvailable) {
+      const errorMessage = 'Сервер недоступен. Демонстрационный режим отключён — попробуйте позже.'
+      setIsTyping(false)
+      setApiError(errorMessage)
+      setMessages(prev => [...prev, {
+        id: `system-${Date.now()}`,
+        role: 'system',
+        content: errorMessage,
+        createdAt: new Date().toISOString(),
+      }])
+      return
+    }
 
     try {
       let aiResponse: ChatMessage
@@ -870,7 +885,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const sid = sessionRef.current?.sessionId
           const entry = prev.find(c => c.id === sid || c.id === currentChatId)
           if (entry && (!entry.title || entry.title === 'Без названия')) {
-            updateSessionTitle(sid!, truncated).catch(() => {})
+            updateSessionTitle(sid!, truncated, sessionRef.current?.sessionSecret).catch(() => {})
             return prev.map(c =>
               c.id === (sid || currentChatId)
                 ? { ...c, title: truncated }
@@ -921,13 +936,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               }
               // Update title on backend
               if (needsTitle && !useMocks && sessionRef.current) {
-                updateSessionTitle(sessionRef.current.sessionId, chatTitle).catch(() => {})
+                updateSessionTitle(sessionRef.current.sessionId, chatTitle, sessionRef.current.sessionSecret).catch(() => {})
               }
               return updated
             }
             // New chat entry
             if (!useMocks && sessionRef.current) {
-              updateSessionTitle(sessionRef.current.sessionId, chatTitle).catch(() => {})
+              updateSessionTitle(sessionRef.current.sessionId, chatTitle, sessionRef.current.sessionSecret).catch(() => {})
             }
             return [
               {
@@ -967,9 +982,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           errorMessage = error.detail
         }
       } else {
-        // Network error — fall back to mocks on next call
+        // Keep the live build in live mode. The next request may be retried,
+        // but must not show generated demo content as if it were real data.
         setBackendAvailable(false)
-        errorMessage = 'Не удалось подключиться к серверу. Переключаемся на офлайн-режим.'
+        errorMessage = 'Не удалось подключиться к серверу. Демонстрационный режим отключён.'
       }
 
       setApiError(errorMessage)
@@ -988,7 +1004,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const tripData = tripDataMap[tripId]
     if (!tripData) return
 
-    const useMocks = isMockMode() || !backendAvailable
+    const useMocks = isMockMode()
 
     if (!useMocks) {
       // When backend is available, start a new chat and send the query via API

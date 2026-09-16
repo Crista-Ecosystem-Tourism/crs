@@ -9,7 +9,7 @@ import { PlaceDetailPanel } from '@/components/map/PlaceDetailPanel'
 import { HomeHub } from '@/components/home/HomeHub'
 import { SavedRoutesPanel } from '@/components/routes/SavedRoutesPanel'
 import { DataPanel } from '@/components/data/DataPanel'
-import { MyTripsPanel } from '@/components/trips/MyTripsPanel'
+import { SuitcasePanel } from '@/components/suitcase/SuitcasePanel'
 import { InspirationPanel } from '@/components/inspiration/InspirationPanel'
 import { CommunityPanel } from '@/components/community/CommunityPanel'
 import { GamePanel } from '@/components/game/GamePanel'
@@ -84,7 +84,7 @@ export function MainLayout() {
               </div>
             ) : isHome && mainView === 'suitcase' ? (
               <div className="w-full h-full crista-view">
-                <MyTripsPanel onBack={() => setMainView('home')} />
+                <SuitcasePanel onBack={() => setMainView('home')} />
               </div>
             ) : isHome ? (
 <div className="w-full h-full relative z-0 crista-view">
