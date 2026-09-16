@@ -41,6 +41,11 @@ def get_vectorization_url() -> str:
     return os.getenv("VECTORIZATION_URL", "http://vectorization:8001").rstrip("/")
 
 
+def vectorization_admin_token() -> str | None:
+    raw = os.getenv("VECTORIZATION_ADMIN_TOKEN")
+    return raw.strip() if raw and raw.strip() else None
+
+
 def get_seed_dir() -> str:
     return os.getenv("DATA_SEED_DIR", "/app/data/seed")
 

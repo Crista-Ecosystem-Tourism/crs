@@ -2,7 +2,8 @@
 
 Стратегия: data_backend пишет JSON-файл со списком мест в shared volume,
 а затем дёргает у `vectorization` существующий эндпоинт
-``POST /api/v1/load/json?filepath=...``. Это позволяет не дублировать
+``POST /api/v1/load/json``. Файл читается только из shared volume, а
+административный токен передаётся service-to-service. Это позволяет не дублировать
 логику эмбеддингов и не трогать `vectorization_backend`.
 """
 from __future__ import annotations
@@ -17,7 +18,12 @@ from typing import Iterable
 import httpx
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
-from app.config import get_seed_dir, get_vectorization_url, http_user_agent
+from app.config import (
+    get_seed_dir,
+    get_vectorization_url,
+    http_user_agent,
+    vectorization_admin_token,
+)
 
 log = logging.getLogger(__name__)
 
@@ -38,12 +44,16 @@ def write_seed_file(records: Iterable[dict], suffix: str | None = None) -> Path:
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=2, max=30))
-async def _post_load_json(filepath: str) -> dict:
+async def _post_load_json(filename: str) -> dict:
     url = f"{get_vectorization_url()}/api/v1/load/json"
     timeout = httpx.Timeout(60.0, read=600.0)
     headers = {"User-Agent": http_user_agent()}
+    token = vectorization_admin_token()
+    if not token:
+        raise RuntimeError("VECTORIZATION_ADMIN_TOKEN is required for Chroma reindexing")
+    headers["Authorization"] = f"Bearer {token}"
     async with httpx.AsyncClient(timeout=timeout, headers=headers) as client:
-        response = await client.post(url, params={"filepath": filepath})
+        response = await client.post(url, json={"filename": filename})
         response.raise_for_status()
         return response.json()
 
@@ -54,7 +64,7 @@ async def reindex_chroma(records: list[dict]) -> dict:
 
     path = write_seed_file(records)
     try:
-        result = await _post_load_json(str(path))
+        result = await _post_load_json(path.name)
     except RetryError as exc:
         log.exception("vectorization unreachable: %s", exc)
         return {"status": "error", "message": str(exc), "count": len(records)}

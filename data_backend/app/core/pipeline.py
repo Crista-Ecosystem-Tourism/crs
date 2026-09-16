@@ -121,10 +121,11 @@ async def run_source(source_id: str, scope: str | None = None) -> dict[str, Any]
             )
             return {"status": "failed", "source": source_id}
 
+        run_status = "partial" if errors else "ok"
         await _close_run(
             session,
             run,
-            status="ok",
+            status=run_status,
             fetched=fetched,
             inserted=inserted,
             updated=updated,
@@ -142,7 +143,7 @@ async def run_source(source_id: str, scope: str | None = None) -> dict[str, Any]
         len(errors),
     )
     return {
-        "status": "ok",
+        "status": "partial" if errors else "ok",
         "source": source_id,
         "fetched": fetched,
         "inserted": inserted,
@@ -185,7 +186,13 @@ async def reindex_pending(batch_size: int | None = None) -> dict[str, Any]:
             result = await reindex_chroma(payload)
             if result.get("status") != "ok":
                 log.warning("reindex_chroma not ok: %s", result)
-                break
+                return {
+                    "status": "error",
+                    "indexed": total_indexed,
+                    "batches": batches,
+                    "failed_batch": batches,
+                    "failure": result,
+                }
             await mark_embedded(session, [p.id for p in places])
             total_indexed += len(places)
             cleanup_old_seeds()
@@ -196,7 +203,11 @@ async def reindex_pending(batch_size: int | None = None) -> dict[str, Any]:
 def _place_to_record(place: Place) -> dict[str, Any]:
     """Сериализация Place под формат, ожидаемый vectorization /load/json.
 
-    Используем плоскую структуру, совместимую с текущим data.json.
+    ``vectorization_backend`` historically expected a legacy nested shape while
+    this service persists normalized flat fields. Emit the normalized fields as
+    the source of truth and the small compatibility projection alongside them.
+    This keeps city/category filters and descriptive text intact during the
+    transition instead of silently indexing them as empty values.
     """
 
     desc = place.description or place.name
@@ -210,6 +221,10 @@ def _place_to_record(place: Place) -> dict[str, Any]:
     ]
     page_content = ". ".join(p for p in text_parts if p)
 
+    subcategories = [place.category]
+    if place.subcategory and place.subcategory not in subcategories:
+        subcategories.append(place.subcategory)
+
     return {
         "id": str(place.id),
         "external_id": place.external_id,
@@ -217,9 +232,16 @@ def _place_to_record(place: Place) -> dict[str, Any]:
         "name": place.name,
         "category": place.category,
         "subcategory": place.subcategory,
+        "subcategories": subcategories,
+        "subtype": [place.subcategory] if place.subcategory else [],
         "city": place.city,
         "region": place.region,
         "country": place.country,
+        "addressObj": {
+            "city": place.city or "",
+            "state": place.region or "",
+            "country": place.country or "",
+        },
         "lat": place.lat,
         "lng": place.lng,
         "latitude": place.lat,
@@ -228,6 +250,7 @@ def _place_to_record(place: Place) -> dict[str, Any]:
         "page_content": page_content,
         "tags": place.tags,
         "rating": place.rating,
+        "numberOfReviews": None,
         "image": place.image_urls[0] if place.image_urls else None,
         "image_urls": place.image_urls,
         "website": place.website,
@@ -245,19 +268,35 @@ async def bootstrap() -> dict[str, Any]:
     source_results = await run_all_sources()
     reindex_result = await reindex_pending()
 
+    source_failed = [
+        result["source"]
+        for result in source_results
+        if result["status"] not in {"ok", "skipped"}
+    ]
+    reindex_ok = reindex_result.get("status") in {"ok", "noop"}
+    status = "ok" if not source_failed and reindex_ok else "partial"
+
     async with SessionFactory() as session:
         existing = (
             await session.execute(select(BootstrapState).order_by(BootstrapState.id))
         ).scalars().first()
-        if existing is None:
-            existing = BootstrapState(completed_at=datetime.now(timezone.utc))
-            session.add(existing)
-        else:
-            existing.completed_at = datetime.now(timezone.utc)
+        if status == "ok":
+            if existing is None:
+                existing = BootstrapState(completed_at=datetime.now(timezone.utc))
+                session.add(existing)
+            else:
+                existing.completed_at = datetime.now(timezone.utc)
+            existing.notes = None
+        elif existing is not None:
+            existing.notes = (
+                "latest bootstrap incomplete: "
+                f"sources={','.join(source_failed) or 'ok'} "
+                f"reindex={reindex_result.get('status')}"
+            )
         await session.commit()
 
-    log.info("=== BOOTSTRAP DONE ===")
-    return {"sources": source_results, "reindex": reindex_result}
+    log.info("=== BOOTSTRAP %s ===", status.upper())
+    return {"status": status, "sources": source_results, "reindex": reindex_result}
 
 
 async def maybe_auto_bootstrap() -> None:
