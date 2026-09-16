@@ -33,6 +33,10 @@ class EdgeOutput(BaseModel):
         ..., 
         description="Массив координат маршрута [[lon, lat], [lon, lat], ...]"
     )
+    is_approximate_route: bool = Field(
+        default=False,
+        description="True, если OSRM недоступен и показана прямая интерполяция между точками",
+    )
 
 
 class AlternativePath(BaseModel):

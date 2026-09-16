@@ -4,9 +4,10 @@ import asyncio
 import logging
 import time
 import uuid
+from dataclasses import replace
 from typing import List, Dict, Tuple
 
-from app.config import config
+from app.config import Config, config
 from app.core.graph_builder import WeightedGraphBuilder, GraphBuildResult
 from app.core.pathfinding import PathFinder
 from app.services.osrm_client import OSRMClient
@@ -44,11 +45,12 @@ async def build_graph(request: GraphBuildRequest):
         weights = [p.weight for p in request.points]
         names = [p.name for p in request.points]
         
-        original_config = _apply_request_config(request)
-        
         logger.info(f"Building graph for {len(points)} points...")
         
-        builder = WeightedGraphBuilder(osrm_client)
+        builder = WeightedGraphBuilder(
+            osrm_client,
+            settings=_request_config(request),
+        )
         result = await asyncio.to_thread(
             builder.build,
             points,
@@ -85,31 +87,26 @@ async def build_graph(request: GraphBuildRequest):
         logger.error(f"Error building graph: {e}", exc_info=True)
         raise HTTPException(500, f"Failed to build graph: {str(e)}")
     
-    finally:
-        _restore_config(original_config)
-
-
-def _apply_request_config(request: GraphBuildRequest) -> Dict:
-    original = {}
-    
-    if request.base_radius_m is not None:
-        original['BASE_RADIUS_M'] = config.BASE_RADIUS_M
-        config.BASE_RADIUS_M = request.base_radius_m
-    
-    if request.min_connections is not None:
-        original['MIN_CONNECTIONS'] = config.MIN_CONNECTIONS
-        config.MIN_CONNECTIONS = request.min_connections
-    
-    if request.k_alternatives is not None:
-        original['K_ALTERNATIVES'] = config.K_ALTERNATIVES
-        config.K_ALTERNATIVES = request.k_alternatives
-    
-    return original
-
-
-def _restore_config(original: Dict):
-    for key, value in original.items():
-        setattr(config, key, value)
+def _request_config(request: GraphBuildRequest) -> Config:
+    """Return isolated graph settings for one request without mutating globals."""
+    return replace(
+        config,
+        BASE_RADIUS_M=(
+            request.base_radius_m
+            if request.base_radius_m is not None
+            else config.BASE_RADIUS_M
+        ),
+        MIN_CONNECTIONS=(
+            request.min_connections
+            if request.min_connections is not None
+            else config.MIN_CONNECTIONS
+        ),
+        K_ALTERNATIVES=(
+            request.k_alternatives
+            if request.k_alternatives is not None
+            else config.K_ALTERNATIVES
+        ),
+    )
 
 
 def _build_response(
@@ -155,7 +152,8 @@ def _build_response(
                 name=names[b]
             ),
             distance_m=float(result.dist_matrix[a, b]),
-            route_geometry=route_coords
+            route_geometry=route_coords,
+            is_approximate_route=key in result.approximate_routes,
         ))
     
     alternative_paths = []
@@ -227,7 +225,8 @@ def _create_geojson(
                 "from_name": edge.from_node.name,
                 "to_id": edge.to_node.id,
                 "to_name": edge.to_node.name,
-                "distance_m": edge.distance_m
+                "distance_m": edge.distance_m,
+                "is_approximate_route": edge.is_approximate_route,
             }
         })
     

@@ -16,7 +16,7 @@ except ImportError:
 from ..core.geometry import GeometryCalculator
 from ..services.osrm_client import OSRMClient
 from ..utils.metrics import calculate_graph_metrics, pair_key
-from ..config import config
+from ..config import Config, config
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,20 @@ class GraphBuildResult:
     edges: List[Tuple[int, int]]
     connections: List[int]
     routes: Dict[Tuple[int, int], List[Tuple[float, float]]]
+    approximate_routes: List[Tuple[int, int]]
     dist_matrix: np.ndarray
     metrics: Dict
 
 
 class WeightedGraphBuilder:
-    def __init__(self, osrm_client: Optional[OSRMClient] = None):
+    def __init__(
+        self,
+        osrm_client: Optional[OSRMClient] = None,
+        settings: Optional[Config] = None,
+    ):
         self.osrm_client = osrm_client or OSRMClient()
         self.geometry = GeometryCalculator()
+        self.config = settings or config
     
     def build(
         self, 
@@ -43,13 +49,13 @@ class WeightedGraphBuilder:
     ) -> GraphBuildResult:
         num_points = len(points)
         if num_points == 0:
-            return GraphBuildResult([], [], {}, np.array([]), {})
+            return GraphBuildResult([], [], {}, [], np.array([]), {})
         
         logger.info("Computing distance matrix...")
         dist_haversine = self.geometry.compute_distance_matrix(points)
         
         osrm_matrix = None
-        if use_osrm_scoring and config.USE_OSRM:
+        if use_osrm_scoring and self.config.USE_OSRM:
             osrm_matrix = self.osrm_client.get_distance_matrix(points)
             if osrm_matrix is None:
                 logger.info("OSRM matrix unavailable, using haversine")
@@ -68,7 +74,7 @@ class WeightedGraphBuilder:
             edges, points, connections, dist_haversine
         )
         
-        routes, _ = self._fetch_route_geometries(edges, points)
+        routes, approximate_routes = self._fetch_route_geometries(edges, points)
         
         dist_matrix = self._build_distance_matrix(
             dist_haversine, edges, routes
@@ -80,6 +86,7 @@ class WeightedGraphBuilder:
             edges=edges,
             connections=connections,
             routes=routes,
+            approximate_routes=approximate_routes,
             dist_matrix=dist_matrix,
             metrics=metrics
         )
@@ -103,14 +110,14 @@ class WeightedGraphBuilder:
                     for i in range(3):
                         for j in range(i + 1, 3):
                             a, b = simplex[i], simplex[j]
-                            if dist_matrix[a, b] <= config.BASE_RADIUS_M:
+                            if dist_matrix[a, b] <= self.config.BASE_RADIUS_M:
                                 candidates.add(pair_key(a, b))
                                 
             except Exception as e:
                 logger.info(f"Delaunay failed: {e}, using kNN only")
         
         coords = np.array(points)
-        k = min(config.KNN_K + 1, num_points)
+        k = min(self.config.KNN_K + 1, num_points)
         
         if HAVE_SKLEARN:
             nn = NearestNeighbors(n_neighbors=k).fit(coords)
@@ -123,7 +130,7 @@ class WeightedGraphBuilder:
             for i in range(num_points):
                 distances = [(dist_matrix[i, j], j) for j in range(num_points) if i != j]
                 distances.sort()
-                for _, j in distances[:config.KNN_K]:
+                for _, j in distances[:self.config.KNN_K]:
                     candidates.add(pair_key(i, j))
         
         return list(candidates)
@@ -165,9 +172,9 @@ class WeightedGraphBuilder:
         for a, b in candidates:
             avg_weight = (weights[a] + weights[b]) / 2.0
             distance = float(dist_for_scoring[a, b])
-            score = distance / (1.0 + config.ALPHA_WEIGHT_PULL * avg_weight)
+            score = distance / (1.0 + self.config.ALPHA_WEIGHT_PULL * avg_weight)
             
-            if distance > config.BASE_RADIUS_M:
+            if distance > self.config.BASE_RADIUS_M:
                 score *= 1.5
             
             scored_edges.append((score, a, b, distance))
@@ -182,11 +189,11 @@ class WeightedGraphBuilder:
             if pair_key(a, b) in used_pairs:
                 continue
             
-            max_conn_a = config.MIN_CONNECTIONS + int(
-                weights[a] * config.MAX_CONNECTIONS_FACTOR
+            max_conn_a = self.config.MIN_CONNECTIONS + int(
+                weights[a] * self.config.MAX_CONNECTIONS_FACTOR
             )
-            max_conn_b = config.MIN_CONNECTIONS + int(
-                weights[b] * config.MAX_CONNECTIONS_FACTOR
+            max_conn_b = self.config.MIN_CONNECTIONS + int(
+                weights[b] * self.config.MAX_CONNECTIONS_FACTOR
             )
             
             if connections[a] < max_conn_a and connections[b] < max_conn_b:
@@ -196,7 +203,7 @@ class WeightedGraphBuilder:
                 connections[b] += 1
         
         for i in range(num_points):
-            while connections[i] < config.MIN_CONNECTIONS:
+            while connections[i] < self.config.MIN_CONNECTIONS:
                 candidates_for_i = [
                     (j, dist_haversine[i, j]) 
                     for j in range(num_points) 
@@ -264,7 +271,7 @@ class WeightedGraphBuilder:
             a, b = edge
             geometry = None
             
-            if config.USE_OSRM:
+            if self.config.USE_OSRM:
                 geometry = self.osrm_client.get_route_geometry(points[a], points[b])
             
             if geometry is None:
@@ -280,7 +287,7 @@ class WeightedGraphBuilder:
             
             return pair_key(a, b), geometry, True
         
-        with ThreadPoolExecutor(max_workers=config.PARALLEL_WORKERS) as executor:
+        with ThreadPoolExecutor(max_workers=self.config.PARALLEL_WORKERS) as executor:
             futures = {executor.submit(fetch_single_route, edge): edge for edge in edges}
             
             for future in as_completed(futures):
