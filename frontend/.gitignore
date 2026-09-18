@@ -40,3 +40,5 @@ yarn-error.log*
 
 # graphify (local knowledge-graph tool output/cache)
 graphify-out/
+test-results/
+playwright-report/

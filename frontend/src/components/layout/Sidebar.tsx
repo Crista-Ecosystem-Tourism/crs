@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, X, Moon, Sun, MessageSquare, Search, Map, BookOpen, Luggage, User,
-  ChevronRight, Settings, HelpCircle, LogOut, Users, ImagePlus, Tent, Globe2, Languages,
+  Plus, X, Moon, Sun, MessageSquare, BookOpen, Luggage, User,
+  ChevronRight, Settings, HelpCircle, LogOut, Globe2, Languages,
 } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
@@ -15,15 +15,10 @@ import { cn, getInitials } from '@/lib/utils'
 import { Logo } from '@/components/icons/Logo'
 
 const menuItems = [
-  { icon: Search, label: 'Главная', id: 'explore' },
-  { icon: MessageSquare, label: 'Маршрут', id: 'chats' },
-  { icon: Globe2, label: 'Игра', id: 'game' },
-  { icon: Users, label: 'Сообщество', id: 'community' },
-  { icon: BookOpen, label: 'Wiki', id: 'data' },
-  { icon: Map, label: 'Мои маршруты', id: 'saved' },
-  { icon: ImagePlus, label: 'Место по фото', id: 'placeByPhoto' },
-  { icon: Tent, label: 'Туры и глемпинг', id: 'toursGlamping' },
-  { icon: Luggage, label: 'Мои путешествия', id: 'suitcase' },
+  { icon: Globe2, label: 'Изучение мира', id: 'game' },
+  { icon: BookOpen, label: 'Crista Wiki', id: 'data' },
+  { icon: MessageSquare, label: 'AI-маршруты', id: 'chats' },
+  { icon: Luggage, label: 'Паспорт', id: 'suitcase' },
 ] as const
 
 type MenuId = (typeof menuItems)[number]['id']
@@ -48,24 +43,19 @@ export function Sidebar() {
   const activeMenuId = useMemo<MenuId>(() => {
     if (currentChatId) return 'chats'
     if (mainView === 'chatList') return 'chats'
-    if (mainView === 'inspiration') return 'saved'
-    if (mainView === 'saved') return 'saved'
+    if (mainView === 'inspiration') return 'chats'
+    if (mainView === 'saved') return 'chats'
     if (mainView === 'game') return 'game'
-    if (mainView === 'community') return 'community'
-    if (mainView === 'placeByPhoto') return 'placeByPhoto'
-    if (mainView === 'toursGlamping') return 'toursGlamping'
+    if (mainView === 'community') return 'chats'
+    if (mainView === 'placeByPhoto') return 'chats'
+    if (mainView === 'toursGlamping') return 'chats'
     if (mainView === 'data') return 'data'
     if (mainView === 'suitcase') return 'suitcase'
-    return 'explore'
+    return 'chats'
   }, [currentChatId, mainView])
 
   const openSection = (id: MenuId) => {
     setSidebarOpen(false)
-    if (id === 'explore') {
-      goHome()
-      navigate('/')
-      return
-    }
     goHome()
     setMainView(id === 'chats' ? 'chatList' : id)
   }
