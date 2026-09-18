@@ -28,6 +28,8 @@ class GameProfile(Base, TimestampMixin):
     xp: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     energy: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     energy_refreshed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_activity_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class GameCountry(Base, TimestampMixin):
@@ -58,10 +60,29 @@ class GameCity(Base, TimestampMixin):
     region_id: Mapped[str] = mapped_column(ForeignKey("game_region.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     tier: Mapped[int] = mapped_column(Integer, nullable=False)
+    required_quest_count: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    completion_stamp_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    completion_stamp_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    boss_content_revision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("game_content_revision.id"), nullable=True
+    )
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         Index("idx_game_city_region", "region_id"),
+    )
+
+
+class GameDistrict(Base, TimestampMixin):
+    __tablename__ = "game_district"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    city_id: Mapped[str] = mapped_column(ForeignKey("game_city.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("city_id", "position", name="uq_game_district_city_position"),
     )
 
 
@@ -73,8 +94,12 @@ class GameQuest(Base, TimestampMixin):
     content_revision_id: Mapped[str] = mapped_column(
         ForeignKey("game_content_revision.id"), nullable=False
     )
+    district_id: Mapped[str | None] = mapped_column(ForeignKey("game_district.id"), nullable=True)
     kind: Mapped[str] = mapped_column(String, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    prerequisite_quest_id: Mapped[str | None] = mapped_column(
+        ForeignKey("game_quest.id"), nullable=True
+    )
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
@@ -125,3 +150,30 @@ class GameStamp(Base):
         UniqueConstraint("user_id", "stamp_key", name="uq_game_stamp_user_key"),
         Index("idx_game_stamp_user_earned", "user_id", "earned_at"),
     )
+
+
+class GameRewardLedger(Base):
+    """Immutable XP receipt. A unique reward key makes retries harmless."""
+
+    __tablename__ = "game_reward_ledger"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("app_user.id"), nullable=False)
+    quest_id: Mapped[str] = mapped_column(ForeignKey("game_quest.id"), nullable=False)
+    reward_key: Mapped[str] = mapped_column(String, nullable=False)
+    xp: Mapped[int] = mapped_column(Integer, nullable=False)
+    awarded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "reward_key", name="uq_game_reward_user_key"),
+        Index("idx_game_reward_user_awarded", "user_id", "awarded_at"),
+    )
+
+
+class GameDailyProgress(Base):
+    __tablename__ = "game_daily_progress"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("app_user.id"), primary_key=True)
+    goal_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    completed_quests: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    goal_reached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
