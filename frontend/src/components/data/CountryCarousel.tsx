@@ -15,6 +15,7 @@ export interface CarouselItem {
 interface CountryCarouselProps {
   items: CarouselItem[]
   onOpen: (id: string) => void
+  language?: 'ru' | 'en'
 }
 
 /**
@@ -22,7 +23,7 @@ interface CountryCarouselProps {
  * соседние отведены назад и подсвечены слабее. Глубина сделана на
  * CSS-трансформациях, без библиотек.
  */
-export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
+export function CountryCarousel({ items, onOpen, language = 'ru' }: CountryCarouselProps) {
   const [index, setIndex] = useState(0)
 
   const count = items.length
@@ -70,7 +71,7 @@ export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
             <button
               key={item.id}
               onClick={() => (isActive ? onOpen(item.id) : setIndex(i))}
-              aria-label={isActive ? `Открыть статью ${item.name}` : `Показать ${item.name}`}
+              aria-label={isActive ? (language === 'en' ? `Open ${item.name} article` : `Открыть статью ${item.name}`) : (language === 'en' ? `Show ${item.name}` : `Показать ${item.name}`)}
               aria-current={isActive}
               className={cn(
                 'absolute h-[380px] w-[290px] overflow-hidden rounded-xl border text-left',
@@ -92,7 +93,7 @@ export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
                 <span className="absolute left-1/2 top-4 -translate-x-1/2">
                   <span className="flex items-center gap-1.5 rounded-full bg-ink-950/55 px-3 py-1.5 font-sans text-xs text-white backdrop-blur-sm">
                     <Maximize2 className="h-3 w-3" aria-hidden="true" />
-                    Открыть
+                    {language === 'en' ? 'Open' : 'Открыть'}
                   </span>
                 </span>
               )}
@@ -128,7 +129,7 @@ export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
         <div className="glass flex items-center gap-3 rounded-full py-2 pl-2 pr-3">
           <button
             onClick={() => go(-1)}
-            aria-label="Предыдущая страна"
+            aria-label={language === 'en' ? 'Previous country' : 'Предыдущая страна'}
             className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-panel-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -150,7 +151,7 @@ export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
 
           <button
             onClick={() => go(1)}
-            aria-label="Следующая страна"
+            aria-label={language === 'en' ? 'Next country' : 'Следующая страна'}
             className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-panel-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ChevronRight className="h-4 w-4" />
@@ -164,7 +165,7 @@ export function CountryCarousel({ items, onOpen }: CountryCarouselProps) {
           <button
             key={item.id}
             onClick={() => setIndex(i)}
-            aria-label={`Перейти к ${item.name}`}
+            aria-label={language === 'en' ? `Go to ${item.name}` : `Перейти к ${item.name}`}
             aria-current={i === index}
             className={cn(
               'h-1.5 rounded-full transition-all duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',

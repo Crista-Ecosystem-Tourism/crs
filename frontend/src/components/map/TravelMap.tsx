@@ -121,7 +121,7 @@ export function TravelMap() {
   const {
     places, mapCenter, mapZoom, selectedPlace, setSelectedPlace,
     routeGeoJSON, graphGeoJSON, buildingGraph, buildPlaceGraph,
-    openModal, theme,
+    openModal, theme, routePlacesToSave,
   } = useApp()
   const breakpoint = useMediaBreakpoint()
   const selectedCount = places.filter(p => p.selected).length
@@ -256,7 +256,7 @@ export function TravelMap() {
 
       {/* Selected places count */}
       <AnimatePresence>
-        {selectedCount > 0 && !selectedPlace && (
+        {routePlacesToSave.length > 0 && !selectedPlace && (
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -265,7 +265,7 @@ export function TravelMap() {
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
-                Выбрано мест: {selectedCount}
+                {routeGeoJSON ? `Точек в AI-маршруте: ${routePlacesToSave.length}` : `Выбрано мест: ${selectedCount}`}
               </span>
               <Button size="sm" variant="secondary" onClick={() => openModal('save-route')}>
                 Сохранить маршрут

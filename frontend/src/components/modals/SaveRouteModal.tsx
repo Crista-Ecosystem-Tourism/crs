@@ -12,26 +12,40 @@ import { Input } from '@/components/ui/input'
 import { useApp } from '@/context/AppContext'
 
 export function SaveRouteModal() {
-  const { activeModal, closeModal, saveCurrentRoute, places } = useApp()
+  const { activeModal, closeModal, saveCurrentRoute, routePlacesToSave } = useApp()
   const isOpen = activeModal === 'save-route'
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  const selectedPlaces = places.filter(p => p.selected)
+  const selectedPlaces = routePlacesToSave
+
+  const handleClose = () => {
+    setSaveError(null)
+    closeModal()
+  }
 
   const handleSave = async () => {
-    if (!name.trim()) return
+    if (!name.trim() || saving) return
     setSaving(true)
     try {
       await saveCurrentRoute(name.trim())
       setName('')
+      setSaveError(null)
+    } catch {
+      setSaveError('Не удалось сохранить маршрут на сервере. Проверьте соединение и попробуйте снова.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setSaveError(null)
+        closeModal()
+      }
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -47,10 +61,15 @@ export function SaveRouteModal() {
           <Input
             placeholder="Название маршрута"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value)
+              setSaveError(null)
+            }}
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             autoFocus
           />
+
+          {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
 
           {selectedPlaces.length > 0 && (
             <div className="max-h-32 overflow-y-auto space-y-1">
@@ -64,7 +83,7 @@ export function SaveRouteModal() {
           )}
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={closeModal}>
+            <Button variant="outline" onClick={handleClose} disabled={saving}>
               Отмена
             </Button>
             <Button

@@ -15,9 +15,10 @@ import { Img } from '@/components/ui/Img'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/context/AppContext'
 import { useGameProgress } from '@/hooks/useGameProgress'
+import { getHomeCopy } from '@/lib/homeCopy'
 import { BattlePass } from './BattlePass'
 import { DailyQuiz } from '@/components/game/DailyQuiz'
-import { gameCountries } from '@/mocks/game'
+import { gameCountries, gameCountryName, weeklyTrackTitle } from '@/mocks/game'
 
 interface HomeHubProps {
   onSend: (message: string) => void
@@ -27,47 +28,47 @@ const HERO_IMAGE =
   'https://images.unsplash.com/photo-1520175480921-4edfa2983e0f?w=2000&q=80'
 
 const suggestions = [
-  { label: 'Санкт-Петербург за 3 дня', tripId: 'spb-excursions' },
-  { label: 'Гастротур по Грузии', tripId: 'georgia-food' },
-  { label: 'Горы Алтая', tripId: 'altai-trekking' },
-  { label: 'Культура Киото', tripId: 'kyoto-culture' },
-  { label: 'Пляжи Бали', tripId: 'bali-beaches' },
+  { label: { ru: 'Санкт-Петербург за 3 дня', en: '3 days in St. Petersburg' }, tripId: 'spb-excursions' },
+  { label: { ru: 'Гастротур по Грузии', en: 'Food tour of Georgia' }, tripId: 'georgia-food' },
+  { label: { ru: 'Горы Алтая', en: 'Altai Mountains' }, tripId: 'altai-trekking' },
+  { label: { ru: 'Культура Киото', en: 'Kyoto culture' }, tripId: 'kyoto-culture' },
+  { label: { ru: 'Пляжи Бали', en: 'Beaches of Bali' }, tripId: 'bali-beaches' },
 ]
 
 const destinations = [
   {
     id: 'venice',
-    title: 'Венеция',
-    country: 'Италия',
-    tag: 'Культура',
+    title: { ru: 'Венеция', en: 'Venice' },
+    country: { ru: 'Италия', en: 'Italy' },
+    tag: { ru: 'Культура', en: 'Culture' },
     imageUrl: 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&q=80',
   },
   {
     id: 'rome',
-    title: 'Рим',
-    country: 'Италия',
-    tag: 'История',
+    title: { ru: 'Рим', en: 'Rome' },
+    country: { ru: 'Италия', en: 'Italy' },
+    tag: { ru: 'История', en: 'History' },
     imageUrl: 'https://images.unsplash.com/photo-1531572753322-ad063cecc140?w=800&q=80',
   },
   {
     id: 'kyoto',
-    title: 'Киото',
-    country: 'Япония',
-    tag: 'Традиции',
+    title: { ru: 'Киото', en: 'Kyoto' },
+    country: { ru: 'Япония', en: 'Japan' },
+    tag: { ru: 'Традиции', en: 'Traditions' },
     imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80',
   },
   {
     id: 'cinque',
-    title: 'Чинкве-Терре',
-    country: 'Италия',
-    tag: 'Побережье',
+    title: { ru: 'Чинкве-Терре', en: 'Cinque Terre' },
+    country: { ru: 'Италия', en: 'Italy' },
+    tag: { ru: 'Побережье', en: 'Coast' },
     imageUrl: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&q=80',
   },
   {
     id: 'fuji',
-    title: 'Фудзи',
-    country: 'Япония',
-    tag: 'Природа',
+    title: { ru: 'Фудзи', en: 'Mount Fuji' },
+    country: { ru: 'Япония', en: 'Japan' },
+    tag: { ru: 'Природа', en: 'Nature' },
     imageUrl: 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=800&q=80',
   },
 ]
@@ -75,7 +76,8 @@ const destinations = [
 /* ---------------------------------------------------------------- Composer */
 
 function Composer({ onSend }: { onSend: (message: string) => void }) {
-  const { loadTripChat } = useApp()
+  const { loadTripChat, language } = useApp()
+  const copy = getHomeCopy(language)
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -110,7 +112,7 @@ function Composer({ onSend }: { onSend: (message: string) => void }) {
           </span>
 
           <label htmlFor="home-composer" className="sr-only">
-            Опишите поездку, которую хотите спланировать
+            {copy.composerLabel}
           </label>
           <textarea
             id="home-composer"
@@ -120,16 +122,16 @@ function Composer({ onSend }: { onSend: (message: string) => void }) {
             onInput={autoGrow}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder="Грузия, 5 дней, 80 тысяч"
+            placeholder={copy.composerPlaceholder}
             className="max-h-32 min-h-[44px] flex-1 resize-none overflow-hidden bg-transparent py-3 font-sans text-base leading-relaxed text-text outline-none placeholder:text-text-muted"
           />
 
           <div className="flex shrink-0 items-center gap-1.5 pb-0.5">
-            <IconButton label="Голосовой ввод" variant="ghost" className="hidden sm:inline-flex">
+            <IconButton label={copy.voiceInput} variant="ghost" className="hidden sm:inline-flex">
               <Mic />
             </IconButton>
             <IconButton
-              label="Построить маршрут"
+              label={copy.buildRoute}
               variant="solid"
               onClick={handleSend}
               disabled={!message.trim()}
@@ -155,7 +157,7 @@ function Composer({ onSend }: { onSend: (message: string) => void }) {
               }
             }}
           >
-            {s.label}
+            {s.label[language]}
           </Chip>
         ))}
       </div>
@@ -190,13 +192,15 @@ function ProgressRing({ value, size = 56 }: { value: number; size?: number }) {
 /* ------------------------------------------------------------------ HomeHub */
 
 export function HomeHub({ onSend }: HomeHubProps) {
-  const { setMainView, user, openModal } = useApp()
+  const { setMainView, user, openModal, language } = useApp()
+  const copy = getHomeCopy(language)
   const { countryProgress, stats, passPoints, answeredQuizIds, answerQuiz, resetQuiz, quizStreak } =
     useGameProgress()
 
   // Фокус берём из игры: первая открытая страна, которую ещё не закрыли
   const focus =
     gameCountries.find((c) => c.opened && countryProgress(c.iso) < 100) ?? gameCountries[0]
+  const focusName = gameCountryName(focus, language)
   const focusProgress = countryProgress(focus.iso)
   const savings = focus.savings
   const savedPercent = savings ? Math.round((savings.current / savings.target) * 100) : 0
@@ -210,7 +214,7 @@ export function HomeHub({ onSend }: HomeHubProps) {
             <div className="relative overflow-hidden rounded-xl border border-hairline-2 shadow-lg">
               <Img
                 src={HERO_IMAGE}
-                alt="Панорама города на воде"
+                alt={copy.heroImage}
                 className="h-[380px] w-full object-cover sm:h-[440px]"
               />
               {/* Затемнение сжато к низу: верх кадра остаётся в полную силу,
@@ -225,11 +229,10 @@ export function HomeHub({ onSend }: HomeHubProps) {
 
               <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
                 <DisplayTitle size="lg" className="max-w-[14ch] !text-white">
-                  Куда отправимся?
+                  {copy.heroTitle}
                 </DisplayTitle>
                 <p className="mt-3 max-w-[46ch] font-accent text-base leading-relaxed text-white/80 sm:text-lg">
-                  Опишите поездку словами. Crista соберёт маршрут, посчитает бюджет
-                  и откроет страну на вашей карте мира.
+                  {copy.heroDescription}
                 </p>
               </div>
             </div>
@@ -239,16 +242,16 @@ export function HomeHub({ onSend }: HomeHubProps) {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-x-10 gap-y-5">
-              <StatTile icon={<CloudSun />} value="12°C" label="Москва, облачно" />
+              <StatTile icon={<CloudSun />} value="12°C" label={copy.weather} />
               <StatTile
                 icon={<Compass />}
-                value={`${stats.openedCountries} стран`}
-                label="Открыто из 195"
+                value={copy.countriesCount(stats.openedCountries)}
+                label={copy.countriesOpened}
               />
               <StatTile
                 icon={<Flame />}
                 value={`${stats.doneQuests}`}
-                label={`Квестов закрыто из ${stats.totalQuests}`}
+                label={copy.questsCompleted(stats.doneQuests, stats.totalQuests)}
               />
             </div>
           </div>
@@ -259,11 +262,11 @@ export function HomeHub({ onSend }: HomeHubProps) {
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="font-sans text-xs uppercase tracking-wide text-text-muted">
-                    Фокус страны
+                    {copy.countryFocus}
                   </p>
                   <p className="mt-1 flex items-center gap-2 truncate font-display text-2xl font-semibold text-text">
                     <span aria-hidden="true">{focus.flag}</span>
-                    {focus.name}
+                    {focusName}
                   </p>
                 </div>
                 <div className="relative shrink-0">
@@ -275,15 +278,15 @@ export function HomeHub({ onSend }: HomeHubProps) {
               </div>
               <p className="mt-3 font-sans text-sm leading-relaxed text-text-secondary">
                 {focus.weekly
-                  ? `${focus.weekly.title}, урок ${focus.weekly.lesson} из ${focus.weekly.totalLessons}`
-                  : 'Откройте страну, чтобы получить задания недели'}
+                  ? copy.weeklyLesson(weeklyTrackTitle(focus.weekly, language), focus.weekly.lesson, focus.weekly.totalLessons)
+                  : copy.lockedWeekly}
               </p>
               <Button
                 variant="secondary"
                 className="mt-4 w-full"
                 onClick={() => setMainView('game')}
               >
-                Продолжить в Игре
+                {copy.continueGame}
                 <ArrowRight />
               </Button>
             </GlassPanel>
@@ -295,12 +298,12 @@ export function HomeHub({ onSend }: HomeHubProps) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-sans text-sm font-semibold text-text">
-                    Копилка: {savings?.destination ?? 'цель не выбрана'}
+                    {copy.savings(savings?.destination)}
                   </p>
                   <p className="font-sans text-xs tabular text-text-muted">
                     {savings
-                      ? `${savings.current.toLocaleString('ru')} из ${savings.target.toLocaleString('ru')} ₽`
-                      : 'Выберите направление в разделе Игра'}
+                      ? copy.savingsAmount(savings.current, savings.target)
+                      : copy.chooseDestination}
                   </p>
                 </div>
               </div>
@@ -309,8 +312,8 @@ export function HomeHub({ onSend }: HomeHubProps) {
               </div>
               <p className="mt-3 font-sans text-xs text-text-secondary">
                 {savings && savings.priceTrend < 0
-                  ? `Билеты подешевели на ${Math.abs(savings.priceTrend)}% за неделю.`
-                  : 'Следим за ценой билетов и сообщим о падении.'}
+                  ? copy.priceDrop(Math.abs(savings.priceTrend))
+                  : copy.watchingPrices}
               </p>
             </GlassPanel>
 
@@ -318,19 +321,19 @@ export function HomeHub({ onSend }: HomeHubProps) {
             <GlassPanel variant="photo" className="p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="font-sans text-sm font-semibold text-text">
-                  Изучаем: {focus.name}
+                  {copy.studying(focusName)}
                 </p>
                 <button
                   onClick={() => setMainView('game')}
                   className="shrink-0 font-sans text-xs text-link transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  Все вопросы
+                  {copy.allQuestions}
                 </button>
               </div>
 
               <DailyQuiz
                 countryIso={focus.iso}
-                countryName={focus.name}
+                countryName={focusName}
                 answeredIds={answeredQuizIds}
                 onAnswer={answerQuiz}
                 onReset={() => resetQuiz(focus.iso)}
@@ -346,6 +349,7 @@ export function HomeHub({ onSend }: HomeHubProps) {
             points={passPoints}
             isPremium={user?.subscription === 'premium'}
             onUpgrade={() => openModal('subscription')}
+            language={language}
           />
         </section>
 
@@ -353,13 +357,13 @@ export function HomeHub({ onSend }: HomeHubProps) {
         <section className="mt-14">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="font-display text-2xl font-semibold tracking-tight text-text sm:text-[28px]">
-              Куда едут сейчас
+              {copy.destinationsHeading}
             </h2>
             <button
               onClick={() => setMainView('inspiration')}
               className="shrink-0 font-sans text-sm text-link transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              Смотреть все
+              {copy.seeAll}
             </button>
           </div>
 
@@ -367,24 +371,24 @@ export function HomeHub({ onSend }: HomeHubProps) {
             {destinations.map((d) => (
               <button
                 key={d.id}
-                onClick={() => onSend(`Хочу поехать в ${d.title}, ${d.country}`)}
+                onClick={() => onSend(copy.tripPrompt(d.title[language], d.country[language]))}
                 className="group relative w-[240px] shrink-0 snap-start overflow-hidden rounded-lg text-left transition duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-[280px]"
               >
                 <div className="aspect-[4/5] overflow-hidden">
                   <Img
                     src={d.imageUrl}
-                    alt={`${d.title}, ${d.country}`}
+                    alt={`${d.title[language]}, ${d.country[language]}`}
                     className="h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
                   />
                 </div>
                 <div className="absolute inset-0 photo-scrim" />
                 <div className="absolute inset-x-0 bottom-0 p-5">
                   <p className="font-display text-2xl font-semibold leading-tight text-white">
-                    {d.title}
+                    {d.title[language]}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5 font-sans text-xs text-white/70">
                     <MapPin className="h-3 w-3" />
-                    {d.country}
+                    {d.country[language]}
                   </p>
                 </div>
               </button>

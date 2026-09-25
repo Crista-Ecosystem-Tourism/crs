@@ -9,6 +9,12 @@ export interface AuthUser {
   id: string
   email: string
   name: string | null
+  is_editor: boolean
+}
+
+export interface UserPreferences {
+  theme: 'light' | 'dark'
+  language: 'ru' | 'en'
 }
 
 export interface AuthResponse {
@@ -108,6 +114,23 @@ export async function getMe(): Promise<AuthUser> {
   }
 
   return handleAuthResponse<AuthUser>(response)
+}
+
+export async function getPreferences(): Promise<UserPreferences> {
+  const response = await fetch(`${API_BASE_URL}/auth/preferences`, { headers: getAuthHeaders() })
+  return handleAuthResponse<UserPreferences>(response)
+}
+
+export async function savePreferences(preferences: UserPreferences, token = getToken()): Promise<UserPreferences> {
+  const response = await fetch(`${API_BASE_URL}/auth/preferences`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(preferences),
+  })
+  return handleAuthResponse<UserPreferences>(response)
 }
 
 /** Logout — clear local token */

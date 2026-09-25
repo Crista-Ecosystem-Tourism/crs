@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SuitcaseJourneyMap, type JourneyMarker } from './SuitcaseJourneyMap'
+import { TripMiniSiteControls } from './TripMiniSiteControls'
 
 const EXPENSE_CATEGORIES = [
   { value: 'food', label: 'Еда' },
@@ -876,6 +877,8 @@ function TripDetail({
               </ul>
             )}
           </section>
+
+          <TripMiniSiteControls tripId={trip.id} />
 
           <Button variant="danger" className="w-full rounded-xl" onClick={() => void onDelete()}>
             Удалить поездку

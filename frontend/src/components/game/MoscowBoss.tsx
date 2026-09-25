@@ -7,6 +7,8 @@ import {
   type MoscowBossState,
 } from '@/api/gameApi'
 import { Chip, GlassPanel } from '@/components/ui/glass'
+import { useApp } from '@/context/AppContext'
+import { getGameCopy } from '@/lib/gameCopy'
 
 type ViewState = 'loading' | 'ready' | 'answering' | 'locked' | 'error'
 
@@ -20,20 +22,24 @@ export function MoscowBoss({
   refreshKey: number
   onCompleted?: () => void
 }) {
+  const { language } = useApp()
+  const copy = getGameCopy(language)
   const [state, setState] = useState<MoscowBossState | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [view, setView] = useState<ViewState>('loading')
   const [message, setMessage] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<Array<{ question_id: string; correct: boolean; explanation: string }>>([])
 
   useEffect(() => {
     if (!signedIn) return
     let active = true
     setView('loading')
-    getMoscowBoss()
+    getMoscowBoss(language)
       .then((result) => {
         if (!active) return
         setState(result)
         setAnswers({})
+        setFeedback([])
         setView('ready')
       })
       .catch((error: unknown) => {
@@ -42,11 +48,11 @@ export function MoscowBoss({
           setView('locked')
           return
         }
-        setMessage(error instanceof ApiError ? error.message : 'Не удалось загрузить финальный круг Москвы')
+        setMessage(language === 'ru' && error instanceof ApiError ? error.message : copy.moscowBoss.retry)
         setView('error')
       })
     return () => { active = false }
-  }, [refreshKey, signedIn])
+  }, [refreshKey, signedIn, language])
 
   const submit = async () => {
     if (!state || view === 'answering' || state.completed) return
@@ -58,6 +64,7 @@ export function MoscowBoss({
           question_id: question.id,
           answer_key: answers[question.id] ?? '',
         })),
+        language,
       )
       setState((previous) => previous ? {
         ...previous,
@@ -67,13 +74,12 @@ export function MoscowBoss({
         city_stamp: result.city_stamp,
         sandbox_unlocked: result.sandbox_unlocked,
       } : previous)
+      setFeedback(result.feedback)
       if (result.completed) onCompleted?.()
-      setMessage(result.correct
-        ? 'Городской штамп получен. Москва открыта для свободного исследования.'
-        : `Есть неточности: ${result.incorrect_answers}. Энергия списана только за неверные ответы.`)
+      setMessage(result.correct ? copy.moscowBoss.allCorrect : copy.moscowBoss.incorrectSummary(result.incorrect_answers))
       setView('ready')
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : 'Ответы не сохранились. Попробуйте ещё раз.')
+      setMessage(language === 'ru' && error instanceof ApiError ? error.message : copy.moscowBoss.saveFailed)
       setView('ready')
     }
   }
@@ -83,7 +89,7 @@ export function MoscowBoss({
   if (view === 'error' || !state) {
     return (
       <GlassPanel variant="flat" className="border-danger/30 p-4 font-sans text-sm text-text-secondary">
-        Финальный круг Москвы пока недоступен: {message ?? 'попробуйте обновить страницу'}.
+        {copy.moscowBoss.unavailable(message ?? copy.moscowBoss.retry)}
       </GlassPanel>
     )
   }
@@ -93,30 +99,31 @@ export function MoscowBoss({
     <GlassPanel className="overflow-hidden border-amber-300/20 p-0">
       <div className="bg-[linear-gradient(120deg,rgba(227,200,120,0.16),rgba(11,125,127,0.12))] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Chip variant="active"><Crown /> Москва · финальный круг</Chip>
+          <Chip variant="active"><Crown /> {copy.finalRound}</Chip>
           <div className="flex items-center gap-2">
             <Chip size="sm"><Award /> {state.profile.xp} XP</Chip>
             <Chip size="sm"><BatteryMedium /> {state.profile.energy}/5</Chip>
-            <Chip size="sm"><Flame /> {state.daily.streak} дн.</Chip>
+            <Chip size="sm"><Flame /> {copy.streakDays(state.daily.streak)}</Chip>
           </div>
         </div>
-        <p className="mt-4 font-sans text-sm text-text-secondary">{state.content.chris.name} · проводник</p>
+        <p className="mt-4 font-sans text-sm text-text-secondary">{state.content.chris.name} · {copy.guide}</p>
         <h2 className="mt-1 font-display text-2xl font-semibold text-text">{state.content.scene.title}</h2>
         <p className="mt-3 max-w-2xl font-sans text-sm leading-6 text-text-secondary">{state.content.chris.intro}</p>
       </div>
       <div className="space-y-5 p-5 sm:p-6">
+        {state.content_language !== language && <p className="rounded bg-panel-2 px-3 py-2 font-sans text-xs text-text-muted">{copy.contentLanguageNote}</p>}
         {state.completed ? (
           <div className="flex items-start gap-3 rounded-md bg-primary/10 p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <p className="font-sans text-sm text-text-secondary">
-              {state.city_stamp?.title ?? 'Городской штамп'} уже в паспорте. Sandbox Москвы открыт.
+              {copy.moscowBoss.completed(state.city_stamp?.title ?? (language === 'en' ? 'City stamp' : 'Городской штамп'))}
             </p>
           </div>
         ) : (
           <>
             {state.content.questions.map((question, index) => (
               <section key={question.id} className="rounded-md bg-panel-2/70 p-4">
-                <p className="font-sans text-xs uppercase tracking-wide text-text-muted">Вопрос {index + 1}</p>
+                <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.moscowBoss.question(index + 1)}</p>
                 <p className="mt-2 font-display text-lg font-semibold text-text">{question.text}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   {question.options.map((option) => (
@@ -139,18 +146,31 @@ export function MoscowBoss({
               onClick={() => void submit()}
               className="rounded-md bg-primary px-5 py-3 font-sans text-sm font-semibold text-white transition hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Проверить три ответа
+              {copy.moscowBoss.submit}
             </button>
-            {state.profile.energy === 0 && <p className="font-sans text-xs text-warning">Энергия закончилась — она восстановится завтра.</p>}
+            {state.profile.energy === 0 && <p className="font-sans text-xs text-warning">{copy.moscowBoss.energyEmpty}</p>}
           </>
         )}
         {state.content.sources?.length ? (
           <p className="font-sans text-xs text-text-muted">
-            Источники: {state.content.sources.map((source, index) => (
+            {copy.moscowBoss.sources}: {state.content.sources.map((source, index) => (
               <span key={source.url}>{index ? ' · ' : ''}<a className="text-primary hover:underline" href={source.url} target="_blank" rel="noreferrer">{source.label}</a></span>
             ))}
           </p>
         ) : null}
+        {feedback.length > 0 && (
+          <div className="space-y-2 rounded-md border border-white/10 bg-panel-2/60 p-4">
+            <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.moscowBoss.review}</p>
+            {state.content.questions.map((question, index) => {
+              const result = feedback.find((item) => item.question_id === question.id)
+              return result ? (
+                <p key={question.id} className="font-sans text-sm leading-6 text-text-secondary">
+                  {index + 1}. {result.correct ? copy.moscowBoss.answerCorrect : copy.moscowBoss.answerIncorrect} {result.explanation}
+                </p>
+              ) : null
+            })}
+          </div>
+        )}
         {message && <p className="flex items-center gap-2 font-sans text-sm text-text-secondary"><Sparkles className="h-4 w-4 text-accent-soft" /> {message}</p>}
       </div>
     </GlassPanel>

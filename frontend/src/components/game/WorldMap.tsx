@@ -4,6 +4,8 @@ import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 import worldData from '@/data/world-countries.json'
 import { openedCountryIso } from '@/mocks/game'
+import { useApp } from '@/context/AppContext'
+import { getGameCopy } from '@/lib/gameCopy'
 import 'leaflet/dist/leaflet.css'
 
 interface CountryProps {
@@ -40,6 +42,8 @@ function FitWorld() {
 }
 
 export function WorldMap({ progressByIso, selectedIso, onSelect }: WorldMapProps) {
+  const { language } = useApp()
+  const copy = getGameCopy(language)
   const styleFor = useMemo(
     () =>
       (feature?: Feature<Geometry, CountryProps>): PathOptions => {
@@ -79,7 +83,7 @@ export function WorldMap({ progressByIso, selectedIso, onSelect }: WorldMapProps
       const opened = openedCountryIso.has(iso)
 
       layer.bindTooltip(
-        opened ? name : 'Белое пятно: маршрут сюда ещё не строили',
+        opened ? name : copy.worldMapBlankSpot,
         { direction: 'top', className: 'crista-map-tip', sticky: true }
       )
 
@@ -97,7 +101,7 @@ export function WorldMap({ progressByIso, selectedIso, onSelect }: WorldMapProps
         },
       })
     },
-    [onSelect, styleFor]
+    [copy.worldMapBlankSpot, onSelect, styleFor]
   )
 
   return (

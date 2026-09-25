@@ -3,7 +3,9 @@ import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
 import { CountryMap } from './CountryMap'
 import { CountryQuests } from './CountryQuests'
 import { DailyQuiz } from './DailyQuiz'
-import { questCategoryLabel, type GameCountry, type QuestCategory } from '@/mocks/game'
+import { gameCountryName, questCategoryLabel, type GameCountry, type QuestCategory } from '@/mocks/game'
+import { useApp } from '@/context/AppContext'
+import { getGameCopy } from '@/lib/gameCopy'
 import { cn } from '@/lib/utils'
 
 interface CountryPageProps {
@@ -39,6 +41,9 @@ export function CountryPage({
   onResetQuiz,
   quizStreak,
 }: CountryPageProps) {
+  const { language } = useApp()
+  const copy = getGameCopy(language)
+  const countryName = gameCountryName(country, language)
   // Регион считается открытым, если в его городе закрыт хотя бы один квест
   const visitedRegions = country.cities
     .filter((city) => city.quests.some((q) => isDone(q.id)))
@@ -49,21 +54,21 @@ export function CountryPage({
       <div className="relative z-10">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <IconButton label="К карте мира" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+            <IconButton label={copy.backToWorldMap} variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
               <ArrowLeft />
             </IconButton>
             <span className="text-2xl leading-none" aria-hidden="true">{country.flag}</span>
             <h1 className="truncate font-display text-2xl font-semibold text-text">
-              {country.name}
+              {countryName}
             </h1>
           </div>
           {progress === 100 ? (
             <Chip size="sm" variant="active">
               <Trophy />
-              Закрыта
+              {copy.closed}
             </Chip>
           ) : (
-            <Chip size="sm" className="tabular">{progress}% пройдено</Chip>
+            <Chip size="sm" className="tabular">{copy.completedPercent(progress)}</Chip>
           )}
         </div>
       </div>
@@ -72,9 +77,9 @@ export function CountryPage({
         {/* Карта регионов страны */}
         <section>
           <div className="mb-4 flex items-baseline justify-between gap-4">
-            <h2 className="font-display text-xl font-semibold text-text">Регионы</h2>
+            <h2 className="font-display text-xl font-semibold text-text">{copy.regions}</h2>
             <p className="hidden font-sans text-xs text-text-muted sm:block">
-              Регион раскрывается, когда вы закрываете в нём первую точку
+              {copy.regionUnlockHint}
             </p>
           </div>
 
@@ -86,21 +91,21 @@ export function CountryPage({
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 font-sans text-xs text-text-muted">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-4 rounded-sm bg-primary/70" />
-              Вы здесь были
+              {copy.visited}
             </span>
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-4 rounded-sm bg-violet-700" />
-              Белое пятно
+              {copy.blankSpotLegend}
             </span>
           </div>
         </section>
 
         {/* Вопрос дня по стране */}
         <section>
-          <h2 className="mb-4 font-display text-xl font-semibold text-text">Вопрос дня</h2>
+          <h2 className="mb-4 font-display text-xl font-semibold text-text">{copy.questionOfDay}</h2>
           <DailyQuiz
             countryIso={country.iso}
-            countryName={country.name}
+            countryName={countryName}
             answeredIds={answeredQuizIds}
             onAnswer={onAnswerQuiz}
             onReset={onResetQuiz}
@@ -110,7 +115,7 @@ export function CountryPage({
 
         {/* Квесты */}
         <section>
-          <h2 className="mb-4 font-display text-xl font-semibold text-text">Точки квестов</h2>
+          <h2 className="mb-4 font-display text-xl font-semibold text-text">{copy.questPoints}</h2>
           <CountryQuests
             country={country}
             isDone={isDone}
@@ -123,13 +128,13 @@ export function CountryPage({
         {/* Категории */}
         <GlassPanel className="p-5 sm:p-6">
           <h2 className="mb-4 font-display text-xl font-semibold text-text">
-            Прогресс по категориям
+            {copy.categoryProgressTitle}
           </h2>
           <div className="space-y-2.5">
             {(Object.keys(questCategoryLabel) as QuestCategory[]).map((key) => (
               <div key={key} className="flex items-center gap-3">
                 <span className="w-36 shrink-0 truncate font-sans text-xs text-text-secondary sm:w-44">
-                  {questCategoryLabel[key]}
+                  {copy.categoryNames[key]}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel-2">
                   <div
@@ -147,7 +152,7 @@ export function CountryPage({
 
         <p className="flex items-start gap-2 px-1 font-sans text-xs leading-relaxed text-text-muted">
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Города, где вы закрыли хотя бы одну точку, раскрывают свой регион на карте страны.
+          {copy.regionUnlockNote}
         </p>
       </div>
     </div>

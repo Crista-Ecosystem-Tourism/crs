@@ -39,8 +39,17 @@ function InspirationCard({ onOpen }: { onOpen: () => void }) {
 }
 
 export function SavedRoutesPanel({ onBack }: SavedRoutesPanelProps) {
-  const { savedRoutes, loadSavedRoute, setMainView } = useApp()
+  const {
+    savedRoutes,
+    savedRoutesLoading,
+    savedRoutesLoadError,
+    refreshSavedRoutes,
+    loadSavedRoute,
+    setMainView,
+  } = useApp()
   const [search, setSearch] = useState('')
+  const [loadingRouteId, setLoadingRouteId] = useState<string | null>(null)
+  const [failedRouteId, setFailedRouteId] = useState<string | null>(null)
 
   const filtered = search.trim()
     ? savedRoutes.filter(
@@ -49,6 +58,18 @@ export function SavedRoutesPanel({ onBack }: SavedRoutesPanelProps) {
           r.destination.toLowerCase().includes(search.toLowerCase())
       )
     : savedRoutes
+
+  const openRoute = async (routeId: string) => {
+    setLoadingRouteId(routeId)
+    setFailedRouteId(null)
+    try {
+      await loadSavedRoute(routeId)
+    } catch {
+      setFailedRouteId(routeId)
+    } finally {
+      setLoadingRouteId(null)
+    }
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -86,13 +107,46 @@ export function SavedRoutesPanel({ onBack }: SavedRoutesPanelProps) {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
         <div className="mx-auto max-w-[900px]">
-          {filtered.length > 0 ? (
+          {savedRoutesLoading && savedRoutes.length === 0 && (
+            <p role="status" className="mb-4 rounded-lg border border-hairline bg-panel p-4 text-sm text-text-secondary">
+              Загружаем сохранённые маршруты...
+            </p>
+          )}
+          {savedRoutesLoadError && (
+            <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm text-text">Не удалось загрузить список маршрутов. Проверьте соединение и повторите запрос.</p>
+              <button
+                type="button"
+                onClick={() => void refreshSavedRoutes().catch(() => {})}
+                disabled={savedRoutesLoading}
+                className="rounded-md px-3 py-2 text-sm font-semibold text-link hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+              >
+                {savedRoutesLoading ? 'Загрузка...' : 'Повторить загрузку'}
+              </button>
+            </div>
+          )}
+          {failedRouteId && (
+            <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm text-text">Не удалось загрузить маршрут. Проверьте соединение и попробуйте ещё раз.</p>
+              <button
+                type="button"
+                onClick={() => void openRoute(failedRouteId)}
+                disabled={loadingRouteId !== null}
+                className="rounded-md px-3 py-2 text-sm font-semibold text-link hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+              >
+                {loadingRouteId === failedRouteId ? 'Загрузка...' : 'Повторить'}
+              </button>
+            </div>
+          )}
+          {savedRoutes.length === 0 && (savedRoutesLoading || savedRoutesLoadError) ? null : filtered.length > 0 ? (
             <div className="space-y-2">
               {filtered.map((route) => (
                 <button
                   key={route.id}
                   type="button"
-                  onClick={() => loadSavedRoute(route.id)}
+                  onClick={() => void openRoute(route.id)}
+                  disabled={loadingRouteId !== null}
+                  aria-busy={loadingRouteId === route.id}
                   className="group w-full rounded-lg border border-hairline bg-panel p-3.5 text-left transition duration-base ease-standard hover:border-hairline-2 hover:bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <div className="flex items-start gap-3">
@@ -111,6 +165,7 @@ export function SavedRoutesPanel({ onBack }: SavedRoutesPanelProps) {
                       <span className="flex items-center gap-1.5 font-sans text-xs text-text-secondary">
                         <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                         <span className="truncate">{route.destination}</span>
+                        {loadingRouteId === route.id && <span aria-live="polite">Загрузка...</span>}
                         {route.places.length > 0 && (
                           <span className="shrink-0 tabular text-text-muted">
                             {route.places.length} мест

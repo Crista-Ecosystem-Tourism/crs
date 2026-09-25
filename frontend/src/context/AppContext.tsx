@@ -6,7 +6,7 @@ import { delay, generateId } from '@/lib/utils'
 import { isMockMode, checkHealth, createSession, sendMessage as apiSendMessage, loadSession, clearSession, listSessions, getHistory, updateSessionTitle, attachSession } from '@/api/chatApi'
 import { mapMessageOutToChatMessage, mapHistoryToMessages, computeMapCenter, computeMapZoom } from '@/api/mappers'
 import { ApiError } from '@/api/chatApi'
-import { login as apiLogin, register as apiRegister, getMe, logout as apiLogout, getToken } from '@/api/authApi'
+import { login as apiLogin, register as apiRegister, getMe, getPreferences, savePreferences, logout as apiLogout, getToken } from '@/api/authApi'
 import { buildGraph } from '@/api/graphApi'
 import {
   savePlaceRatings as apiSavePlaceRatings,
@@ -132,6 +132,8 @@ interface AppContextType {
   // Theme
   theme: Theme
   toggleTheme: () => void
+  language: 'ru' | 'en'
+  setLanguage: (language: 'ru' | 'en') => void
 
   // User & Auth
   user: User | null
@@ -170,7 +172,11 @@ interface AppContextType {
 
   // Routes
   savedRoutes: SavedRoute[]
-  saveCurrentRoute: (name: string) => void
+  savedRoutesLoading: boolean
+  savedRoutesLoadError: boolean
+  refreshSavedRoutes: () => Promise<void>
+  routePlacesToSave: Place[]
+  saveCurrentRoute: (name: string) => Promise<void>
   loadSavedRoute: (routeId: string) => Promise<void>
   
   // Modals
@@ -270,8 +276,12 @@ const mockUser: User = {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const preferenceWriteRef = useRef<Promise<void>>(Promise.resolve())
   // Theme
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const [language, setLanguageState] = useState<'ru' | 'en'>(() => {
+    try { return localStorage.getItem('language') === 'en' ? 'en' : 'ru' } catch { return 'ru' }
+  })
   
   // User
   const [user, setUser] = useState<User | null>(() => isMockMode() ? mockUser : null)
@@ -304,6 +314,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // Routes
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([])
+  const [savedRoutesLoading, setSavedRoutesLoading] = useState(() => !isMockMode() && Boolean(getToken()))
+  const [savedRoutesLoadError, setSavedRoutesLoadError] = useState(false)
+  const savedRoutesRequestIdRef = useRef(0)
   
   // Modals
   const [activeModal, setActiveModal] = useState<ModalType>(null)
@@ -337,6 +350,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<SessionState | null>(loadSession())
   const ratingsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingRatingsRef = useRef<Record<string, PlaceRatingEntry> | null>(null)
+
+  const refreshSavedRoutes = useCallback(async () => {
+    if (isMockMode()) {
+      setSavedRoutesLoading(false)
+      setSavedRoutesLoadError(false)
+      return
+    }
+    if (!getToken()) {
+      savedRoutesRequestIdRef.current += 1
+      setSavedRoutes([])
+      setSavedRoutesLoading(false)
+      setSavedRoutesLoadError(false)
+      return
+    }
+
+    const requestId = ++savedRoutesRequestIdRef.current
+    setSavedRoutesLoading(true)
+    setSavedRoutesLoadError(false)
+    try {
+      const routes = await apiListSavedRoutes()
+      if (savedRoutesRequestIdRef.current === requestId) {
+        setSavedRoutes(routes.map(route => ({
+          id: route.id,
+          name: route.name,
+          destination: route.destination,
+          days: 0,
+          places: [],
+          createdAt: route.created_at || new Date().toISOString(),
+        })))
+      }
+    } catch (error) {
+      if (savedRoutesRequestIdRef.current === requestId) setSavedRoutesLoadError(true)
+      throw error
+    } finally {
+      if (savedRoutesRequestIdRef.current === requestId) setSavedRoutesLoading(false)
+    }
+  }, [])
+  const latestItineraryMessage = [...messages].reverse().find(
+    message => message.role === 'assistant' && message.itinerary?.length,
+  )
+  const itinerarySlots = latestItineraryMessage?.itinerary?.flatMap(day => day.slots) ?? []
+  const itineraryPlaces = itinerarySlots.map(slot => slot.place).filter((place): place is Place => Boolean(place))
+  const hasCompleteRoutedItinerary = Boolean(
+    routeGeoJSON && itinerarySlots.length > 0 && itineraryPlaces.length === itinerarySlots.length,
+  )
+  const routePlacesToSave = hasCompleteRoutedItinerary ? itineraryPlaces : places.filter(place => place.selected)
 
   // Flush pending ratings to backend immediately
   const flushPendingRatings = useCallback(() => {
@@ -425,7 +484,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const ok = await checkHealth()
       setBackendAvailable(ok)
-      if (!ok) return
+      if (!ok) {
+        setSavedRoutesLoading(false)
+        if (getToken()) setSavedRoutesLoadError(true)
+        return
+      }
 
       const savedSession = sessionRef.current
 
@@ -433,45 +496,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (getToken()) {
         try {
           const authUser = await getMe()
+          try {
+            const preferences = await getPreferences()
+            setTheme(preferences.theme)
+            setLanguageState(preferences.language)
+          } catch { /* preference API can be unavailable independently */ }
           setUser({
             id: authUser.id,
             name: authUser.name || '',
             email: authUser.email,
+            isEditor: authUser.is_editor,
             authState: 'registered',
           })
           setAuthState('registered')
+          await refreshSavedRoutes().catch(() => {})
 
-          const sessions = await listSessions()
-          if (sessions && sessions.length > 0) {
-            setChatHistory(sessions.map(s => ({
-              id: s.id,
-              title: s.title || 'Без названия',
-              destination: '',
-              messages: [],
-              places: [],
-              createdAt: s.updated_at || new Date().toISOString(),
-            })))
-
-            // Restore last active session (first in list = most recent)
-            const lastSession = savedSession && sessions.some(s => s.id === savedSession.sessionId)
-              ? savedSession
-              : { sessionId: sessions[0].id, sessionSecret: '' }
-            await preloadSessionHistory(lastSession.sessionId, lastSession.sessionSecret)
-          }
-          // Load saved routes
           try {
-            const routes = await apiListSavedRoutes()
-            setSavedRoutes(routes.map(r => ({
-              id: r.id,
-              name: r.name,
-              destination: r.destination,
-              days: 0,
-              places: [],
-              createdAt: r.created_at || new Date().toISOString(),
-            })))
-          } catch { /* ignore */ }
+            const sessions = await listSessions()
+            if (sessions && sessions.length > 0) {
+              setChatHistory(sessions.map(s => ({
+                id: s.id,
+                title: s.title || 'Без названия',
+                destination: '',
+                messages: [],
+                places: [],
+                createdAt: s.updated_at || new Date().toISOString(),
+              })))
+
+              // Restore last active session (first in list = most recent)
+              const lastSession = savedSession && sessions.some(s => s.id === savedSession.sessionId)
+                ? savedSession
+                : { sessionId: sessions[0].id, sessionSecret: '' }
+              await preloadSessionHistory(lastSession.sessionId, lastSession.sessionSecret)
+            }
+          } catch { /* session history has independent availability from saved routes */ }
         } catch {
           // Token invalid/expired — stay as guest
+          setSavedRoutesLoading(false)
+          if (getToken()) setSavedRoutesLoadError(true)
         }
       } else if (savedSession) {
         // Anonymous user — restore session from sessionStorage
@@ -480,7 +542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     init()
-  }, [preloadSessionHistory])
+  }, [preloadSessionHistory, refreshSavedRoutes])
 
   // Flush pending ratings on page unload
   useEffect(() => {
@@ -499,12 +561,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     try {
       localStorage.setItem('theme', theme)
+      localStorage.setItem('language', language)
     } catch { /* ignore */ }
-  }, [theme])
+  }, [theme, language])
+
+  const persistPreferences = useCallback(async (nextTheme: Theme, nextLanguage: 'ru' | 'en') => {
+    const token = getToken()
+    if (!token) return
+    preferenceWriteRef.current = preferenceWriteRef.current
+      .catch(() => {})
+      .then(async () => {
+        await savePreferences({ theme: nextTheme, language: nextLanguage }, token)
+        setApiError(null)
+      })
+      .catch(() => setApiError('Не удалось сохранить настройки аккаунта'))
+    await preferenceWriteRef.current
+  }, [])
 
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
-  }, [])
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      void persistPreferences(next, language)
+      return next
+    })
+  }, [language, persistPreferences])
+
+  const setLanguage = useCallback((nextLanguage: 'ru' | 'en') => {
+    setLanguageState(nextLanguage)
+    void persistPreferences(theme, nextLanguage)
+  }, [persistPreferences, theme])
 
   // Auth functions
   const loadUserSessions = useCallback(async () => {
@@ -519,29 +604,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         createdAt: s.updated_at || new Date().toISOString(),
       })))
     } catch { /* ignore — user may have no sessions */ }
-    // Load saved routes
-    try {
-      const routes = await apiListSavedRoutes()
-      setSavedRoutes(routes.map(r => ({
-        id: r.id,
-        name: r.name,
-        destination: r.destination,
-        days: 0,
-        places: [],
-        createdAt: r.created_at || new Date().toISOString(),
-      })))
-    } catch { /* ignore */ }
-  }, [])
+    // Route errors are reflected in their own loading/error state.
+    await refreshSavedRoutes().catch(() => {})
+  }, [refreshSavedRoutes])
 
   const loginWithEmail = useCallback(async (email: string, password: string) => {
     setAuthLoading(true)
     setAuthError(null)
     try {
       const { user: authUser } = await apiLogin(email, password)
+      try {
+        const preferences = await getPreferences()
+        setTheme(preferences.theme)
+        setLanguageState(preferences.language)
+      } catch { /* keep the device preference if account preferences are unavailable */ }
       setUser({
         id: authUser.id,
         name: authUser.name || '',
         email: authUser.email,
+        isEditor: authUser.is_editor,
         authState: 'registered',
       })
       setAuthState('registered')
@@ -566,10 +647,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuthError(null)
     try {
       const { user: authUser } = await apiRegister(email, password, name)
+      await persistPreferences(theme, language)
       setUser({
         id: authUser.id,
         name: authUser.name || '',
         email: authUser.email,
+        isEditor: authUser.is_editor,
         authState: 'registered',
       })
       setAuthState('registered')
@@ -579,6 +662,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await attachSession(sessionRef.current.sessionId, sessionRef.current.sessionSecret)
         } catch { /* нет анонимной сессии или уже привязана */ }
       }
+      await loadUserSessions()
     } catch (error) {
       const msg = error instanceof ApiError ? error.detail : 'Ошибка регистрации'
       setAuthError(msg)
@@ -586,10 +670,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setAuthLoading(false)
     }
-  }, [])
+  }, [language, loadUserSessions, persistPreferences, theme])
 
   const logout = useCallback(() => {
     apiLogout()
+    savedRoutesRequestIdRef.current += 1
+    setSavedRoutes([])
+    setSavedRoutesLoading(false)
+    setSavedRoutesLoadError(false)
     setUser(null)
     setAuthState('guest')
     setCurrentChatId(null)
@@ -871,8 +959,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSuggestedReplies(mapped.suggestedReplies)
 
         // Save route data if present
-        if (response.route_geojson) setRouteGeoJSON(response.route_geojson)
-        if (response.route_metadata) setRouteMetadata(response.route_metadata)
+        setRouteGeoJSON(response.route_geojson ?? null)
+        setRouteMetadata(response.route_metadata ?? null)
       }
 
       setMessages(prev => [...prev, aiResponse])
@@ -1122,34 +1210,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Save route
   const saveCurrentRoute = useCallback(async (name: string) => {
-    const selectedPlaces = places.filter(p => p.selected)
-    if (selectedPlaces.length === 0) return
+    const savedPlaces = routePlacesToSave
+    if (savedPlaces.length === 0) return
 
-    const destination = selectedPlaces[0]?.address?.split(',')[0] || 'Путешествие'
+    const destination = savedPlaces[0]?.address?.split(',')[0] || 'Путешествие'
 
-    // Try to save via API
-    if (!isMockMode() && backendAvailable) {
+    // In live mode, never turn a failed server save into a local-only success.
+    if (!isMockMode()) {
+      setApiError(null)
+      if (!backendAvailable) {
+        const error = new Error('Сервис сохранения маршрутов недоступен')
+        setApiError(error.message)
+        throw error
+      }
       try {
         const result = await apiCreateSavedRoute({
           name,
           destination,
           session_id: sessionRef.current?.sessionId ?? null,
-          places: selectedPlaces as unknown as Record<string, unknown>[],
+          places: savedPlaces as unknown as Record<string, unknown>[],
           graph_geojson: graphGeoJSON,
+          route_geojson: hasCompleteRoutedItinerary ? routeGeoJSON : null,
         })
         const newRoute: SavedRoute = {
           id: result.id,
           name: result.name,
           destination: result.destination,
-          days: selectedPlaces.length,
-          places: selectedPlaces,
+          days: savedPlaces.length,
+          places: savedPlaces,
           createdAt: result.created_at || new Date().toISOString(),
         }
         setSavedRoutes(prev => [...prev, newRoute])
         setActiveModal(null)
         return
-      } catch {
-        // Fall through to local save
+      } catch (error) {
+        setApiError('Не удалось сохранить маршрут на сервере')
+        throw error
       }
     }
 
@@ -1158,13 +1254,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: `route-${Date.now()}`,
       name,
       destination,
-      days: selectedPlaces.length,
-      places: selectedPlaces,
+      days: savedPlaces.length,
+      places: savedPlaces,
       createdAt: new Date().toISOString(),
     }
     setSavedRoutes(prev => [...prev, newRoute])
     setActiveModal(null)
-  }, [places, backendAvailable, graphGeoJSON])
+  }, [routePlacesToSave, backendAvailable, graphGeoJSON, hasCompleteRoutedItinerary, routeGeoJSON])
 
   // Load a saved route and display its places on the map
   const loadSavedRoute = useCallback(async (routeId: string) => {
@@ -1178,7 +1274,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (route.graph_geojson) {
         setGraphGeoJSON(route.graph_geojson)
+      } else {
+        setGraphGeoJSON(null)
       }
+      setRouteGeoJSON(route.route_geojson ?? null)
       // Switch to a chat-like view to show the map
       setCurrentChatId(`route-${routeId}`)
       setMessages([{
@@ -1189,10 +1288,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         places: routePlaces,
       }])
       setSelectedPlace(null)
-      setRouteGeoJSON(null)
       setRouteMetadata(null)
-    } catch {
+    } catch (error) {
       setApiError('Не удалось загрузить маршрут')
+      throw error
     }
   }, [])
 
@@ -1235,6 +1334,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextType = {
     theme,
     toggleTheme,
+    language,
+    setLanguage,
     user,
     authState,
     loginWithEmail,
@@ -1263,6 +1364,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     buildingGraph,
     buildPlaceGraph,
     savedRoutes,
+    savedRoutesLoading,
+    savedRoutesLoadError,
+    refreshSavedRoutes,
+    routePlacesToSave,
     saveCurrentRoute,
     loadSavedRoute,
     activeModal,

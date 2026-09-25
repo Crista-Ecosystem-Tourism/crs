@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { getSettingsCopy } from '@/lib/settingsCopy'
 
 /* ------------------------------------------------------------- секции */
 
@@ -100,10 +101,12 @@ function DeleteDialog({
   isOpen,
   onClose,
   onConfirm,
+  copy,
 }: {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
+  copy: ReturnType<typeof getSettingsCopy>
 }) {
   if (!isOpen) return null
 
@@ -124,17 +127,17 @@ function DeleteDialog({
           <AlertTriangle className="h-7 w-7" aria-hidden="true" />
         </span>
         <h2 id="delete-title" className="mb-2 text-center font-display text-2xl font-semibold text-text">
-          Удалить аккаунт?
+          {copy.deleteAccountTitle}
         </h2>
         <p className="mb-6 text-center font-sans text-sm leading-relaxed text-text-secondary">
-          Это действие нельзя отменить. Маршруты, прогресс и штампы будут удалены навсегда.
+          {copy.deleteAccountWarning}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Button variant="secondary" onClick={onClose}>
-            Отмена
+            {copy.cancel}
           </Button>
           <Button variant="danger" onClick={onConfirm}>
-            Удалить
+            {copy.delete}
           </Button>
         </div>
       </div>
@@ -146,10 +149,10 @@ function DeleteDialog({
 
 export function SettingsPage() {
   const navigate = useNavigate()
-  const { user, theme, toggleTheme, logout } = useApp()
+  const { user, theme, toggleTheme, language, setLanguage, logout } = useApp()
+  const copy = getSettingsCopy(language)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(false)
-  const [language, setLanguage] = useState('ru')
   const [publicProfile, setPublicProfile] = useState(true)
   const [showActivity, setShowActivity] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -165,8 +168,8 @@ export function SettingsPage() {
   }
 
   const themeOptions = [
-    { key: 'dark' as const, label: 'Тёмная', hint: 'Основное оформление', icon: Moon },
-    { key: 'light' as const, label: 'Светлая', hint: 'Для яркого света', icon: Sun },
+    { key: 'dark' as const, label: copy.dark, hint: copy.darkHint, icon: Moon },
+    { key: 'light' as const, label: copy.light, hint: copy.lightHint, icon: Sun },
   ]
 
   return (
@@ -177,23 +180,23 @@ export function SettingsPage() {
         <main className="h-full min-w-0 flex-1 overflow-y-auto">
           <div className="relative z-10">
             <div className="mx-auto flex max-w-[760px] items-center gap-3 px-5 pb-2 pt-6 sm:px-6">
-              <IconButton label="Назад" variant="ghost" size="sm" className="-ml-2" onClick={() => navigate(-1)}>
+              <IconButton label={copy.back} variant="ghost" size="sm" className="-ml-2" onClick={() => navigate(-1)}>
                 <ArrowLeft />
               </IconButton>
-              <h1 className="font-display text-2xl font-semibold text-text">Настройки</h1>
+              <h1 className="font-display text-2xl font-semibold text-text">{copy.title}</h1>
             </div>
           </div>
 
           <div className="mx-auto w-full max-w-[760px] px-5 pb-8 pt-4 sm:px-6">
             {/* Личные данные */}
-            <SettingsSection icon={<User />} title="Личные данные">
-              <SettingsRow label="Имя" value={user.name} onClick={() => {}} />
-              <SettingsRow label="Email" value={user.email} onClick={() => {}} />
-              <SettingsRow label="Пароль" value="••••••••" onClick={() => {}} />
+            <SettingsSection icon={<User />} title={copy.personal}>
+              <SettingsRow label={copy.name} value={user.name} onClick={() => {}} />
+              <SettingsRow label={copy.email} value={user.email} onClick={() => {}} />
+              <SettingsRow label={copy.password} value="••••••••" onClick={() => {}} />
             </SettingsSection>
 
             {/* Оформление */}
-            <SettingsSection icon={<Palette />} title="Оформление">
+            <SettingsSection icon={<Palette />} title={copy.appearance}>
               <div className="grid grid-cols-2 gap-3 p-4">
                 {themeOptions.map((opt) => {
                   const active = theme === opt.key
@@ -221,7 +224,7 @@ export function SettingsPage() {
                         >
                           <opt.icon className="h-[18px] w-[18px]" aria-hidden="true" />
                         </span>
-                        {active && <Check className="h-4 w-4 text-primary" aria-label="Выбрано" />}
+                        {active && <Check className="h-4 w-4 text-primary" aria-label={copy.selected} />}
                       </span>
                       <span className="block font-sans text-sm font-medium text-text">
                         {opt.label}
@@ -234,57 +237,57 @@ export function SettingsPage() {
                 })}
               </div>
 
-              <SettingsRow label="Язык интерфейса" description="Применится ко всем разделам">
-                <Select value={language} onValueChange={setLanguage}>
+              <SettingsRow label={copy.language} description={copy.languageNote}>
+                <Select value={language} onValueChange={(value) => setLanguage(value as 'ru' | 'en')}>
                   <SelectTrigger className="h-10 w-40 rounded-md border-hairline-2 bg-panel font-sans text-sm">
                     <Globe className="mr-2 h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-md">
-                    <SelectItem value="ru">Русский</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="ru">{copy.russian}</SelectItem>
+                    <SelectItem value="en">{copy.english}</SelectItem>
                   </SelectContent>
                 </Select>
               </SettingsRow>
             </SettingsSection>
 
             {/* Приватность */}
-            <SettingsSection icon={<Shield />} title="Приватность">
+            <SettingsSection icon={<Shield />} title={copy.privacy}>
               <SettingsRow
-                label="Публичный профиль"
-                description="Друзья видят ваши поездки и штампы"
+                label={copy.publicProfile}
+                description={copy.publicProfileDescription}
               >
                 <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
               </SettingsRow>
               <SettingsRow
-                label="Показывать активность"
-                description="Прогресс по странам виден в лидерборде"
+                label={copy.activity}
+                description={copy.activityDescription}
               >
                 <Switch checked={showActivity} onCheckedChange={setShowActivity} />
               </SettingsRow>
             </SettingsSection>
 
             {/* Уведомления */}
-            <SettingsSection icon={<Bell />} title="Уведомления">
+            <SettingsSection icon={<Bell />} title={copy.notifications}>
               <SettingsRow
-                label="На почту"
-                description="Итоги поездок и падение цен по копилке"
+                label={copy.emailNotifications}
+                description={copy.emailNotificationsDescription}
               >
                 <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
               </SettingsRow>
               <SettingsRow
-                label="Push-уведомления"
-                description="Вопрос дня и напоминание про стрик"
+                label={copy.pushNotifications}
+                description={copy.pushNotificationsDescription}
               >
                 <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
               </SettingsRow>
             </SettingsSection>
 
             {/* Подключённые сервисы */}
-            <SettingsSection icon={<Link2 />} title="Подключённые сервисы">
-              <SettingsRow label="Яндекс" description="Вход и синхронизация">
+            <SettingsSection icon={<Link2 />} title={copy.connectedServices}>
+              <SettingsRow label="Яндекс" description={copy.signInAndSync}>
                 <Button variant="secondary" size="sm">
-                  Подключить
+                  {copy.connect}
                 </Button>
               </SettingsRow>
             </SettingsSection>
@@ -294,7 +297,7 @@ export function SettingsPage() {
               <div className="mb-3 flex items-center gap-2.5 px-1">
                 <AlertTriangle className="h-4 w-4 text-text-muted" aria-hidden="true" />
                 <h2 className="font-sans text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Аккаунт
+                  {copy.account}
                 </h2>
               </div>
               <GlassPanel className="divide-y divide-hairline overflow-hidden p-0">
@@ -303,7 +306,7 @@ export function SettingsPage() {
                   className="group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 >
                   <LogOut className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-                  <span className="font-sans text-sm font-medium text-text">Выйти из аккаунта</span>
+                  <span className="font-sans text-sm font-medium text-text">{copy.logout}</span>
                 </button>
                 <button
                   onClick={() => setShowDeleteDialog(true)}
@@ -312,10 +315,10 @@ export function SettingsPage() {
                   <Trash2 className="h-4 w-4 shrink-0 text-error" aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block font-sans text-sm font-medium text-error">
-                      Удалить аккаунт
+                      {copy.deleteAccount}
                     </span>
                     <span className="mt-0.5 block font-sans text-xs text-text-muted">
-                      Прогресс и штампы будут потеряны
+                      {copy.deleteAccountDescription}
                     </span>
                   </span>
                 </button>
@@ -323,7 +326,7 @@ export function SettingsPage() {
             </section>
 
             <DisplayTitle as="h2" className="sr-only">
-              Настройки Crista
+              {copy.pageLabel}
             </DisplayTitle>
           </div>
         </main>
@@ -332,6 +335,7 @@ export function SettingsPage() {
       <DeleteDialog
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
+        copy={copy}
         onConfirm={() => {
           setShowDeleteDialog(false)
           logout()

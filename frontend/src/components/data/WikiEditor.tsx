@@ -1,10 +1,21 @@
 import { useState } from 'react'
-import { ArrowLeft, Plus, Trash2, Info, Save, RotateCcw } from 'lucide-react'
-import { GlassPanel, IconButton, Chip } from '@/components/ui/glass'
+import { ArrowLeft, Plus, Trash2, Info, Save } from 'lucide-react'
+import { GlassPanel, IconButton } from '@/components/ui/glass'
 import { Button } from '@/components/ui/button'
-import type { WikiDraft, WikiPractical } from '@/hooks/useWikiDrafts'
 import { BlockEditor } from './BlockEditor'
 import type { ArticleBlock } from '@/types/wiki'
+import { useApp } from '@/context/AppContext'
+
+export interface WikiPractical {
+  label: string
+  value: string
+}
+
+export interface WikiEditorSubmission {
+  body: Record<string, unknown>
+  sources: { label: string; url: string }[]
+  license: string
+}
 
 interface EditableArticle {
   id: string
@@ -19,11 +30,8 @@ interface EditableArticle {
 
 interface WikiEditorProps {
   article: EditableArticle
-  existingDraft?: WikiDraft
   onCancel: () => void
-  onSave: (draft: Omit<WikiDraft, 'status' | 'updatedAt'>) => void
-  onDiscard: () => void
-  authorName: string
+  onSave: (submission: WikiEditorSubmission) => Promise<void>
 }
 
 const MAX_SUMMARY = 400
@@ -37,6 +45,7 @@ function Field({
   onChange,
   rows = 4,
   max,
+  language,
 }: {
   id: string
   label: string
@@ -45,6 +54,7 @@ function Field({
   onChange: (v: string) => void
   rows?: number
   max: number
+  language: 'ru' | 'en'
 }) {
   const over = value.length > max
   return (
@@ -66,7 +76,7 @@ function Field({
           over ? 'text-error' : 'text-text-muted'
         }`}
       >
-        {value.length} из {max}
+        {language === 'en' ? `${value.length} of ${max}` : `${value.length} из ${max}`}
       </p>
     </div>
   )
@@ -74,22 +84,24 @@ function Field({
 
 export function WikiEditor({
   article,
-  existingDraft,
   onCancel,
   onSave,
-  onDiscard,
-  authorName,
 }: WikiEditorProps) {
-  const base = existingDraft ?? article
-
-  const [summary, setSummary] = useState(base.summary)
-  const [history, setHistory] = useState(base.history)
-  const [cuisine, setCuisine] = useState(base.cuisine)
-  const [traditions, setTraditions] = useState(base.traditions)
+  const { language } = useApp()
+  const en = language === 'en'
+  const [summary, setSummary] = useState(article.summary)
+  const [history, setHistory] = useState(article.history)
+  const [cuisine, setCuisine] = useState(article.cuisine)
+  const [traditions, setTraditions] = useState(article.traditions)
   const [practical, setPractical] = useState<WikiPractical[]>(
-    base.practical.map((p) => ({ label: p.label, value: p.value }))
+    article.practical.map((p) => ({ label: p.label, value: p.value }))
   )
-  const [blocks, setBlocks] = useState<ArticleBlock[]>(existingDraft?.blocks ?? [])
+  const [blocks, setBlocks] = useState<ArticleBlock[]>([])
+  const [sourceLabel, setSourceLabel] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
+  const [license, setLicense] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const tooLong =
     summary.length > MAX_SUMMARY ||
@@ -99,28 +111,31 @@ export function WikiEditor({
 
   const empty = !summary.trim() || !history.trim() || !cuisine.trim() || !traditions.trim()
 
-  const changed =
-    summary !== article.summary ||
-    history !== article.history ||
-    cuisine !== article.cuisine ||
-    traditions !== article.traditions ||
-    JSON.stringify(practical) !== JSON.stringify(article.practical.map((p) => ({ label: p.label, value: p.value }))) ||
-    JSON.stringify(blocks) !== JSON.stringify(existingDraft?.blocks ?? [])
+  // A reviewed server version may intentionally preserve the catalog text while
+  // attaching its first source and licence, so unchanged copy is valid here.
+  const changed = true
 
   const updateRow = (i: number, patch: Partial<WikiPractical>) =>
     setPractical((prev) => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
 
-  const handleSave = () => {
-    onSave({
-      countryId: article.id,
-      summary: summary.trim(),
-      history: history.trim(),
-      cuisine: cuisine.trim(),
-      traditions: traditions.trim(),
-      practical: practical.filter((p) => p.label.trim() && p.value.trim()),
-      blocks,
-      author: authorName,
-    })
+  const handleSave = async () => {
+    if (saving || !sourceLabel.trim() || !sourceUrl.trim() || !license.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave({
+        body: {
+          summary: summary.trim(), history: history.trim(), cuisine: cuisine.trim(), traditions: traditions.trim(),
+          practical: practical.filter((p) => p.label.trim() && p.value.trim()), blocks,
+        },
+        sources: [{ label: sourceLabel.trim(), url: sourceUrl.trim() }],
+        license: license.trim(),
+      })
+    } catch {
+      setError(en ? 'Could not submit the edit. Check the source, license, and connection.' : 'Не удалось отправить серверную правку. Проверьте источник, лицензию и подключение.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -128,14 +143,13 @@ export function WikiEditor({
       <div className="relative z-10">
         <div className="mx-auto flex max-w-[820px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <IconButton label="Отменить редактирование" variant="ghost" size="sm" className="-ml-2" onClick={onCancel}>
+            <IconButton label={en ? 'Cancel editing' : 'Отменить редактирование'} variant="ghost" size="sm" className="-ml-2" onClick={onCancel}>
               <ArrowLeft />
             </IconButton>
             <h1 className="truncate font-display text-2xl font-semibold text-text">
-              Правка статьи
+              {en ? 'Edit article' : 'Правка статьи'}
             </h1>
           </div>
-          {existingDraft?.status === 'pending' && <Chip size="sm" variant="accent">На модерации</Chip>}
         </div>
       </div>
 
@@ -144,56 +158,57 @@ export function WikiEditor({
           <span className="text-3xl leading-none" aria-hidden="true">{article.flag}</span>
           <div>
             <p className="font-display text-2xl font-semibold text-text">{article.name}</p>
-            <p className="font-sans text-xs text-text-muted">Редактирует {authorName}</p>
+            <p className="font-sans text-xs text-text-muted">{en ? 'Your changes will be submitted for review' : 'Серверная версия будет отправлена на review'}</p>
           </div>
         </div>
 
         <GlassPanel className="flex items-start gap-3 p-4">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-soft" aria-hidden="true" />
           <p className="font-sans text-xs leading-relaxed text-text-secondary">
-            Правки не публикуются сразу. Они попадают в очередь модерации, и до решения редактора
-            статью в прежнем виде видят остальные пользователи. Пишите фактами и без оценок.
+            {en ? 'Edits are not published immediately. They enter the moderation queue, and other users continue to see the current article until an editor decides. Stick to facts and avoid opinion.' : 'Правки не публикуются сразу. Они попадают в очередь модерации, и до решения редактора статью в прежнем виде видят остальные пользователи. Пишите фактами и без оценок.'}
           </p>
         </GlassPanel>
 
         <Field
           id="wiki-summary"
-          label="Краткое описание"
-          hint="Один абзац, который увидят в карточке страны и в поиске"
+          label={en ? 'Summary' : 'Краткое описание'}
+          hint={en ? 'One paragraph shown on the country card and in search' : 'Один абзац, который увидят в карточке страны и в поиске'}
           value={summary}
           onChange={setSummary}
           rows={3}
           max={MAX_SUMMARY}
+          language={language}
         />
 
-        <Field id="wiki-history" label="История" value={history} onChange={setHistory} max={MAX_SECTION} />
-        <Field id="wiki-cuisine" label="Кухня" value={cuisine} onChange={setCuisine} max={MAX_SECTION} />
+        <Field id="wiki-history" label={en ? 'History' : 'История'} value={history} onChange={setHistory} max={MAX_SECTION} language={language} />
+        <Field id="wiki-cuisine" label={en ? 'Cuisine' : 'Кухня'} value={cuisine} onChange={setCuisine} max={MAX_SECTION} language={language} />
         <Field
           id="wiki-traditions"
-          label="Традиции"
+          label={en ? 'Traditions' : 'Традиции'}
           value={traditions}
           onChange={setTraditions}
           max={MAX_SECTION}
+          language={language}
         />
 
         {/* Практическая информация */}
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-sans text-sm font-semibold text-text">Практическая информация</h2>
+            <h2 className="font-sans text-sm font-semibold text-text">{en ? 'Practical information' : 'Практическая информация'}</h2>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setPractical((p) => [...p, { label: '', value: '' }])}
             >
               <Plus />
-              Добавить строку
+              {en ? 'Add row' : 'Добавить строку'}
             </Button>
           </div>
 
           {practical.length === 0 ? (
             <GlassPanel variant="flat" className="p-6 text-center">
               <p className="font-sans text-sm text-text-muted">
-                Пока ничего нет. Добавьте визу, валюту, транспорт или этикет.
+                {en ? 'Nothing here yet. Add visa, currency, transport, or etiquette information.' : 'Пока ничего нет. Добавьте визу, валюту, транспорт или этикет.'}
               </p>
             </GlassPanel>
           ) : (
@@ -203,31 +218,31 @@ export function WikiEditor({
                   <div className="grid flex-1 gap-2 sm:grid-cols-[180px_1fr]">
                     <div>
                       <label htmlFor={`p-label-${i}`} className="sr-only">
-                        Название пункта {i + 1}
+                        {en ? `Item label ${i + 1}` : `Название пункта ${i + 1}`}
                       </label>
                       <input
                         id={`p-label-${i}`}
                         value={row.label}
                         onChange={(e) => updateRow(i, { label: e.target.value })}
-                        placeholder="Виза"
+                        placeholder={en ? 'Visa' : 'Виза'}
                         className="h-11 w-full rounded-md border border-hairline bg-panel px-3 font-sans text-sm text-text outline-none transition placeholder:text-text-muted focus:border-primary/40 focus:ring-2 focus:ring-accent"
                       />
                     </div>
                     <div>
                       <label htmlFor={`p-value-${i}`} className="sr-only">
-                        Значение пункта {i + 1}
+                        {en ? `Item value ${i + 1}` : `Значение пункта ${i + 1}`}
                       </label>
                       <input
                         id={`p-value-${i}`}
                         value={row.value}
                         onChange={(e) => updateRow(i, { value: e.target.value })}
-                        placeholder="Требуется для граждан РФ"
+                        placeholder={en ? 'Required for citizens of…' : 'Требуется для граждан РФ'}
                         className="h-11 w-full rounded-md border border-hairline bg-panel px-3 font-sans text-sm text-text outline-none transition placeholder:text-text-muted focus:border-primary/40 focus:ring-2 focus:ring-accent"
                       />
                     </div>
                   </div>
                   <IconButton
-                    label={`Удалить пункт ${row.label || i + 1}`}
+                    label={en ? `Remove item ${row.label || i + 1}` : `Удалить пункт ${row.label || i + 1}`}
                     variant="ghost"
                     onClick={() => setPractical((p) => p.filter((_, idx) => idx !== i))}
                   >
@@ -241,30 +256,29 @@ export function WikiEditor({
 
         {/* Дополнительные блоки */}
         <div>
-          <h2 className="mb-1 font-sans text-sm font-semibold text-text">Блоки статьи</h2>
+          <h2 className="mb-1 font-sans text-sm font-semibold text-text">{en ? 'Article blocks' : 'Блоки статьи'}</h2>
           <p className="mb-3 font-sans text-xs leading-relaxed text-text-muted">
-            Фото, галереи, ролики, цитаты и врезки вроде разговорника или расписания.
-            Пока нет сервера, файлы хранятся в браузере и не переживут очистку данных.
+            {en ? 'Photos, galleries, videos, quotes, and inserts such as a phrasebook or timetable. These become part of the server article after review.' : 'Фото, галереи, ролики, цитаты и врезки вроде разговорника или расписания. Эти данные войдут в серверную версию статьи после review.'}
           </p>
           <BlockEditor blocks={blocks} onChange={setBlocks} />
         </div>
 
+        <div className="grid gap-3 border-t border-hairline pt-5">
+          <p className="font-sans text-sm font-semibold text-text">{en ? 'Source and license' : 'Источник и лицензия'}</p>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'Source name' : 'Название источника'}<input value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'Source URL' : 'Ссылка на источник'}<input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'License' : 'Лицензия'}<input value={license} onChange={(event) => setLicense(event.target.value)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
+        </div>
+
         {/* Действия */}
         <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-5">
-          <Button onClick={handleSave} disabled={!changed || tooLong || empty}>
+          <Button onClick={() => void handleSave()} disabled={!changed || tooLong || empty || !sourceLabel.trim() || !sourceUrl.trim() || !license.trim() || saving}>
             <Save />
-            Отправить на модерацию
+            {saving ? (en ? 'Submitting…' : 'Отправляем…') : (en ? 'Submit for review' : 'Отправить на review')}
           </Button>
           <Button variant="ghost" onClick={onCancel}>
-            Отмена
+            {en ? 'Cancel' : 'Отмена'}
           </Button>
-
-          {existingDraft && (
-            <Button variant="ghost" className="ml-auto text-text-muted" onClick={onDiscard}>
-              <RotateCcw />
-              Убрать мою правку
-            </Button>
-          )}
         </div>
 
         {empty && (
@@ -274,9 +288,10 @@ export function WikiEditor({
         )}
         {tooLong && (
           <p className="font-sans text-xs text-error">
-            Один из разделов длиннее допустимого. Сократите текст, чтобы отправить правку.
+            {en ? 'A section exceeds the character limit. Shorten it before submitting.' : 'Один из разделов длиннее допустимого. Сократите текст, чтобы отправить правку.'}
           </p>
         )}
+        {error && <p className="font-sans text-xs text-error">{error}</p>}
       </div>
     </div>
   )

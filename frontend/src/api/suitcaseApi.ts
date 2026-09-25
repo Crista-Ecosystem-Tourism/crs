@@ -61,6 +61,54 @@ export type ApiSuitcaseWorkspace = {
   goals: ApiSuitcaseGoalRow[]
 }
 
+export type MiniSitePoint = {
+  latitude: number
+  longitude: number
+  name?: string
+  note?: string
+  photos?: string[]
+}
+
+export type MiniSiteGameStamp = {
+  key: string
+  title: string
+  earned_at: string
+  fact: string
+  source_label: string | null
+  source_url: string | null
+}
+
+export type TripMiniSiteSnapshot = {
+  title: string
+  city: string
+  country: string
+  start_date: string
+  end_date: string
+  cover: string | null
+  summary: string
+  photos: string[]
+  points: MiniSitePoint[]
+  game_stamps?: MiniSiteGameStamp[]
+  stats: { days: number; places_visited: number; distance_km: number }
+}
+
+export type TripMiniSiteState = {
+  published: boolean
+  draft_ready?: boolean
+  slug: string | null
+  visibility: 'public' | 'link' | null
+  consented_at: string | null
+  completed_at?: string | null
+  draft_snapshot?: TripMiniSiteSnapshot | null
+  preview_snapshot?: TripMiniSiteSnapshot | null
+  published_snapshot?: TripMiniSiteSnapshot | null
+}
+
+export type PublicTripMiniSite = {
+  visibility: 'public' | 'link'
+  snapshot: TripMiniSiteSnapshot
+}
+
 export function mapTripFromApi(r: ApiSuitcaseTripRow): SuitcaseTrip {
   return {
     id: r.id,
@@ -158,6 +206,50 @@ export async function deleteSuitcaseTrip(tripId: string): Promise<void> {
     headers: { Accept: 'application/json', ...getAuthHeaders() },
   })
   await parseResponse<{ ok: boolean }>(response)
+}
+
+export async function getTripMiniSite(tripId: string): Promise<TripMiniSiteState> {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/mini-site`, {
+    headers: { Accept: 'application/json', ...getAuthHeaders() },
+  })
+  return parseResponse<TripMiniSiteState>(response)
+}
+
+export async function completeTripForMiniSite(tripId: string, gameStampTicket?: string): Promise<TripMiniSiteState> {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
+    ...(gameStampTicket ? { body: JSON.stringify({ game_stamp_ticket: gameStampTicket }) } : {}),
+  })
+  return parseResponse<TripMiniSiteState>(response)
+}
+
+export async function publishTripMiniSite(
+  tripId: string,
+  visibility: 'public' | 'link',
+  gameStampTicket?: string,
+): Promise<TripMiniSiteState> {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/mini-site`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ visibility, consent_to_publish: true, ...(gameStampTicket ? { game_stamp_ticket: gameStampTicket } : {}) }),
+  })
+  return parseResponse<TripMiniSiteState>(response)
+}
+
+export async function revokeTripMiniSite(tripId: string): Promise<void> {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/suitcase/trips/${encodeURIComponent(tripId)}/mini-site`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', ...getAuthHeaders() },
+  })
+  await parseResponse<{ ok: boolean }>(response)
+}
+
+export async function fetchPublicTripMiniSite(slug: string): Promise<PublicTripMiniSite> {
+  const response = await fetch(`${SUITCASE_API_BASE_URL}/t/${encodeURIComponent(slug)}`, {
+    headers: { Accept: 'application/json' },
+  })
+  return parseResponse<PublicTripMiniSite>(response)
 }
 
 export async function createSuitcaseExpense(

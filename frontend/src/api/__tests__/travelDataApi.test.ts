@@ -100,12 +100,21 @@ describe('createSavedRoute', () => {
       name: 'My Route',
       destination: 'Moscow',
       places: [{ id: 'p1', name: 'Place 1' }],
+      route_geojson: { type: 'FeatureCollection', features: [{ type: 'Feature' }] },
     })
 
     expect(result.id).toBe('r1')
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/routes'),
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'My Route',
+          destination: 'Moscow',
+          places: [{ id: 'p1', name: 'Place 1' }],
+          route_geojson: { type: 'FeatureCollection', features: [{ type: 'Feature' }] },
+        }),
+      }),
     )
   })
 })

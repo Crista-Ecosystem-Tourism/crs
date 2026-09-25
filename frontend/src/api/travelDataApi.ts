@@ -120,6 +120,7 @@ export interface CreateSavedRoutePayload {
   session_id?: string | null
   places: Record<string, unknown>[]
   graph_geojson?: Record<string, unknown> | null
+  route_geojson?: Record<string, unknown> | null
 }
 
 export async function createSavedRoute(
@@ -147,6 +148,7 @@ export interface SavedRouteDetail {
   session_id?: string | null
   places: Record<string, unknown>[]
   graph_geojson?: Record<string, unknown> | null
+  route_geojson?: Record<string, unknown> | null
   created_at?: string | null
   updated_at?: string | null
 }

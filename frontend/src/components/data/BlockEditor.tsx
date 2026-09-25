@@ -11,6 +11,7 @@ import {
   type ArticleBlock, type BlockType,
 } from '@/types/wiki'
 import { cn, pluralize } from '@/lib/utils'
+import { useApp } from '@/context/AppContext'
 
 /** Пока нет бэкенда, файлы живут в браузере: ставим честный потолок */
 const MAX_FILE_MB = 8
@@ -37,10 +38,12 @@ function FileDrop({
   accept,
   label,
   onFile,
+  language,
 }: {
   accept: string
   label: string
   onFile: (url: string, name: string) => void
+  language: 'ru' | 'en'
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -49,7 +52,7 @@ function FileDrop({
   const handle = (file: File | undefined) => {
     if (!file) return
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      setError(`Файл больше ${MAX_FILE_MB} МБ. Пока нет сервера, храним в браузере`)
+      setError(language === 'en' ? `File exceeds ${MAX_FILE_MB} MB. Until a server is available, files are stored in this browser.` : `Файл больше ${MAX_FILE_MB} МБ. Пока нет сервера, храним в браузере`)
       return
     }
     setError(null)
@@ -85,7 +88,7 @@ function FileDrop({
         />
         <Upload className="mb-2 h-5 w-5 text-text-muted" aria-hidden="true" />
         <span className="font-sans text-sm text-text-secondary">{label}</span>
-        <span className="mt-1 font-sans text-xs text-text-muted">до {MAX_FILE_MB} МБ</span>
+        <span className="mt-1 font-sans text-xs text-text-muted">{language === 'en' ? `up to ${MAX_FILE_MB} MB` : `до ${MAX_FILE_MB} МБ`}</span>
       </label>
       {error && <p className="mt-2 font-sans text-xs text-error">{error}</p>}
     </div>
@@ -129,17 +132,20 @@ function Field({
 function BlockBody({
   block,
   update,
+  language,
 }: {
   block: ArticleBlock
   update: (patch: Partial<ArticleBlock>) => void
+  language: 'ru' | 'en'
 }) {
+  const en = language === 'en'
   switch (block.type) {
     case 'heading':
       return (
         <Field
           value={block.text}
           onChange={(text) => update({ text } as Partial<ArticleBlock>)}
-          placeholder="Например: Что попробовать из еды"
+          placeholder={en ? 'For example: What to try' : 'Например: Что попробовать из еды'}
         />
       )
 
@@ -149,7 +155,7 @@ function BlockBody({
           rows={4}
           value={block.text}
           onChange={(text) => update({ text } as Partial<ArticleBlock>)}
-          placeholder="Текст абзаца. Пишите фактами, без оценок"
+          placeholder={en ? 'Paragraph text. Stick to facts, avoid opinions' : 'Текст абзаца. Пишите фактами, без оценок'}
         />
       )
 
@@ -158,9 +164,9 @@ function BlockBody({
         <div className="space-y-3">
           {block.src ? (
             <div className="relative overflow-hidden rounded-md">
-              <Img src={block.src} alt={block.alt || 'Снимок'} className="max-h-64 w-full object-cover" />
+              <Img src={block.src} alt={block.alt || (en ? 'Photo' : 'Снимок')} className="max-h-64 w-full object-cover" />
               <span className="absolute right-2 top-2">
-                <IconButton label="Убрать снимок" size="sm" onClick={() => update({ src: '' } as Partial<ArticleBlock>)}>
+                <IconButton label={en ? 'Remove photo' : 'Убрать снимок'} size="sm" onClick={() => update({ src: '' } as Partial<ArticleBlock>)}>
                   <X />
                 </IconButton>
               </span>
@@ -168,19 +174,20 @@ function BlockBody({
           ) : (
             <FileDrop
               accept="image/*"
-              label="Перетащите снимок или выберите файл"
+              label={en ? 'Drop a photo here or choose a file' : 'Перетащите снимок или выберите файл'}
+              language={language}
               onFile={(src, name) => update({ src, alt: name } as Partial<ArticleBlock>)}
             />
           )}
           <Field
             value={block.alt}
             onChange={(alt) => update({ alt } as Partial<ArticleBlock>)}
-            placeholder="Описание для тех, кто не видит снимок"
+            placeholder={en ? 'Description for people who cannot see the photo' : 'Описание для тех, кто не видит снимок'}
           />
           <Field
             value={block.caption}
             onChange={(caption) => update({ caption } as Partial<ArticleBlock>)}
-            placeholder="Подпись под снимком, необязательно"
+            placeholder={en ? 'Photo caption (optional)' : 'Подпись под снимком, необязательно'}
           />
         </div>
       )
@@ -195,7 +202,7 @@ function BlockBody({
                   <Img src={item.src} alt={item.alt} className="h-full w-full object-cover" />
                   <span className="absolute right-1 top-1">
                     <IconButton
-                      label={`Убрать снимок ${i + 1}`}
+                      label={en ? `Remove photo ${i + 1}` : `Убрать снимок ${i + 1}`}
                       size="sm"
                       onClick={() =>
                         update({ items: block.items.filter((_, idx) => idx !== i) } as Partial<ArticleBlock>)
@@ -210,7 +217,8 @@ function BlockBody({
           )}
           <FileDrop
             accept="image/*"
-            label="Добавить снимок в галерею"
+            label={en ? 'Add a photo to the gallery' : 'Добавить снимок в галерею'}
+            language={language}
             onFile={(src, name) =>
               update({ items: [...block.items, { src, alt: name }] } as Partial<ArticleBlock>)
             }
@@ -225,7 +233,7 @@ function BlockBody({
             <div className="relative overflow-hidden rounded-md bg-ink-950">
               <video src={block.src} controls className="max-h-64 w-full" />
               <span className="absolute right-2 top-2">
-                <IconButton label="Убрать ролик" size="sm" onClick={() => update({ src: '' } as Partial<ArticleBlock>)}>
+                <IconButton label={en ? 'Remove video' : 'Убрать ролик'} size="sm" onClick={() => update({ src: '' } as Partial<ArticleBlock>)}>
                   <X />
                 </IconButton>
               </span>
@@ -234,20 +242,21 @@ function BlockBody({
             <>
               <FileDrop
                 accept="video/*"
-                label="Перетащите ролик или выберите файл"
+                label={en ? 'Drop a video here or choose a file' : 'Перетащите ролик или выберите файл'}
+                language={language}
                 onFile={(src) => update({ src } as Partial<ArticleBlock>)}
               />
               <Field
                 value={block.src}
                 onChange={(src) => update({ src } as Partial<ArticleBlock>)}
-                placeholder="Или вставьте ссылку на ролик"
+                placeholder={en ? 'Or paste a video URL' : 'Или вставьте ссылку на ролик'}
               />
             </>
           )}
           <Field
             value={block.caption}
             onChange={(caption) => update({ caption } as Partial<ArticleBlock>)}
-            placeholder="Подпись под роликом"
+            placeholder={en ? 'Video caption' : 'Подпись под роликом'}
           />
         </div>
       )
@@ -259,12 +268,12 @@ function BlockBody({
             rows={3}
             value={block.text}
             onChange={(text) => update({ text } as Partial<ArticleBlock>)}
-            placeholder="Слова местного жителя или цитата из источника"
+            placeholder={en ? 'Quote from a local resident or a source' : 'Слова местного жителя или цитата из источника'}
           />
           <Field
             value={block.author}
             onChange={(author) => update({ author } as Partial<ArticleBlock>)}
-            placeholder="Кто это сказал"
+            placeholder={en ? 'Who said this?' : 'Кто это сказал'}
           />
         </div>
       )
@@ -283,11 +292,11 @@ function BlockBody({
                       items: block.items.map((x, idx) => (idx === i ? v : x)),
                     } as Partial<ArticleBlock>)
                   }
-                  placeholder={`Пункт ${i + 1}`}
+                  placeholder={en ? `Item ${i + 1}` : `Пункт ${i + 1}`}
                 />
               </div>
               <IconButton
-                label={`Удалить пункт ${i + 1}`}
+                label={en ? `Remove item ${i + 1}` : `Удалить пункт ${i + 1}`}
                 variant="ghost"
                 size="sm"
                 onClick={() =>
@@ -304,7 +313,7 @@ function BlockBody({
             onClick={() => update({ items: [...block.items, ''] } as Partial<ArticleBlock>)}
           >
             <Plus />
-            Пункт
+            {en ? 'Item' : 'Пункт'}
           </Button>
         </div>
       )
@@ -315,17 +324,17 @@ function BlockBody({
           <Field
             value={block.title}
             onChange={(title) => update({ title } as Partial<ArticleBlock>)}
-            placeholder="Заголовок врезки: Разговорник, Расписание, Курс валют"
+            placeholder={en ? 'Insert title: Phrasebook, Timetable, Exchange rates' : 'Заголовок врезки: Разговорник, Расписание, Курс валют'}
           />
           <textarea
             rows={Math.max(3, block.lines.length + 1)}
             value={block.lines.join('\n')}
             onChange={(e) => update({ lines: e.target.value.split('\n') } as Partial<ArticleBlock>)}
-            placeholder={'Гамарджоба - здравствуйте\nМадлоба - спасибо'}
+            placeholder={en ? 'Gamarjoba - hello\nMadloba - thank you' : 'Гамарджоба - здравствуйте\nМадлоба - спасибо'}
             className="w-full resize-y rounded-md border border-hairline bg-panel px-3 py-2.5 font-mono text-sm leading-relaxed text-text outline-none transition placeholder:text-text-muted focus:border-primary/40 focus:ring-2 focus:ring-accent"
           />
           <p className="font-sans text-xs text-text-muted">
-            Каждая строка отдельным пунктом. Моноширинный шрифт держит колонки ровными.
+            {en ? 'Each line is a separate item. Monospace keeps columns aligned.' : 'Каждая строка отдельным пунктом. Моноширинный шрифт держит колонки ровными.'}
           </p>
         </div>
       )
@@ -336,6 +345,14 @@ function BlockBody({
 
 export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
   const [adding, setAdding] = useState(false)
+  const { language } = useApp()
+  const en = language === 'en'
+  const labels: Record<BlockType, string> = en ? {
+    heading: 'Subheading', paragraph: 'Paragraph', image: 'Photo', gallery: 'Gallery', video: 'Video', quote: 'Quote', list: 'List', inset: 'Insert',
+  } : blockLabel
+  const hints: Record<BlockType, string> = en ? {
+    heading: 'Divides the article into sections', paragraph: 'Main text', image: 'A single photo with a caption', gallery: 'Several photos in a row', video: 'A video URL or file', quote: 'Words from a local resident or source', list: 'A bulleted list', inset: 'Timetable, phrasebook, or exchange rates',
+  } : blockHint
 
   const update = (id: string, patch: Partial<ArticleBlock>) =>
     onChange(blocks.map((b) => (b.id === id ? ({ ...b, ...patch } as ArticleBlock) : b)))
@@ -365,13 +382,13 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               <span className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-text-muted" aria-hidden="true" />
                 <span className="font-sans text-xs uppercase tracking-wide text-text-muted">
-                  {blockLabel[block.type]}
+                  {labels[block.type]}
                 </span>
               </span>
 
               <span className="flex items-center gap-1">
                 <IconButton
-                  label="Переместить выше"
+                  label={en ? 'Move up' : 'Переместить выше'}
                   variant="ghost"
                   size="sm"
                   disabled={i === 0}
@@ -380,7 +397,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
                   <ChevronUp />
                 </IconButton>
                 <IconButton
-                  label="Переместить ниже"
+                  label={en ? 'Move down' : 'Переместить ниже'}
                   variant="ghost"
                   size="sm"
                   disabled={i === blocks.length - 1}
@@ -389,7 +406,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
                   <ChevronDown />
                 </IconButton>
                 <IconButton
-                  label={`Удалить блок «${blockLabel[block.type]}»`}
+                  label={en ? `Remove ${labels[block.type]} block` : `Удалить блок «${labels[block.type]}»`}
                   variant="ghost"
                   size="sm"
                   onClick={() => remove(block.id)}
@@ -399,7 +416,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               </span>
             </div>
 
-            <BlockBody block={block} update={(patch) => update(block.id, patch)} />
+            <BlockBody block={block} update={(patch) => update(block.id, patch)} language={language} />
           </GlassPanel>
         )
       })}
@@ -408,8 +425,8 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
       {adding ? (
         <GlassPanel variant="flat" className="p-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="font-sans text-sm font-semibold text-text">Что добавить</p>
-            <IconButton label="Отмена" variant="ghost" size="sm" onClick={() => setAdding(false)}>
+            <p className="font-sans text-sm font-semibold text-text">{en ? 'Choose a block' : 'Что добавить'}</p>
+            <IconButton label={en ? 'Cancel' : 'Отмена'} variant="ghost" size="sm" onClick={() => setAdding(false)}>
               <X />
             </IconButton>
           </div>
@@ -427,10 +444,10 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
                   </span>
                   <span className="min-w-0">
                     <span className="block font-sans text-sm font-medium text-text">
-                      {blockLabel[type]}
+                      {labels[type]}
                     </span>
                     <span className="block font-sans text-xs leading-snug text-text-muted">
-                      {blockHint[type]}
+                      {hints[type]}
                     </span>
                   </span>
                 </button>
@@ -442,10 +459,10 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="secondary" onClick={() => setAdding(true)}>
             <Plus />
-            Добавить блок
+            {en ? 'Add block' : 'Добавить блок'}
           </Button>
           {blocks.length > 0 && (
-            <Chip size="sm" className="tabular">{pluralize(blocks.length, 'блок', 'блока', 'блоков')}</Chip>
+            <Chip size="sm" className="tabular">{en ? `${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}` : pluralize(blocks.length, 'блок', 'блока', 'блоков')}</Chip>
           )}
         </div>
       )}

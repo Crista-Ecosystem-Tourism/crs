@@ -19,6 +19,7 @@ export interface QuestPoint {
 export interface QuestCity {
   id: string
   name: string
+  nameEn: string
   /** Название региона в границах Natural Earth: по нему подсвечивается карта */
   region: string
   coordinates: [number, number]
@@ -34,6 +35,7 @@ export interface DailyTrack {
 /** Еженедельный трек: развёрнутый материал по культуре страны */
 export interface WeeklyTrack {
   title: string
+  titleEn: string
   lesson: number
   totalLessons: number
   percent: number
@@ -52,6 +54,7 @@ export interface SavingsGoal {
 export interface GameCountry {
   iso: string
   name: string
+  nameEn: string
   flag: string
   /** Страна открыта, если по ней уже строился маршрут */
   opened: boolean
@@ -71,6 +74,7 @@ export const gameCountries: GameCountry[] = [
   {
     iso: 'RU',
     name: 'Россия',
+    nameEn: 'Russia',
     flag: '🇷🇺',
     opened: true,
     daily: {
@@ -79,6 +83,7 @@ export const gameCountries: GameCountry[] = [
     },
     weekly: {
       title: 'Онлайн-курс: «Русский авангард за 10 минут»',
+      titleEn: 'Online course: Russian avant-garde in 10 minutes',
       lesson: 3,
       totalLessons: 6,
       percent: 45,
@@ -88,6 +93,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'msk',
         name: 'Москва',
+        nameEn: 'Moscow',
         region: 'Москва',
         coordinates: [55.7558, 37.6173],
         quests: [
@@ -101,6 +107,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'spb',
         name: 'Санкт-Петербург',
+        nameEn: 'Saint Petersburg',
         region: 'Санкт-Петербург',
         coordinates: [59.9311, 30.3609],
         quests: [
@@ -115,6 +122,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'sochi',
         name: 'Сочи',
+        nameEn: 'Sochi',
         region: 'Краснодарский край',
         coordinates: [43.5855, 39.7231],
         quests: [
@@ -129,6 +137,7 @@ export const gameCountries: GameCountry[] = [
   {
     iso: 'GE',
     name: 'Грузия',
+    nameEn: 'Georgia',
     flag: '🇬🇪',
     opened: true,
     daily: {
@@ -137,6 +146,7 @@ export const gameCountries: GameCountry[] = [
     },
     weekly: {
       title: 'Онлайн-курс: «История Кавказа за 10 минут»',
+      titleEn: 'Online course: History of the Caucasus in 10 minutes',
       lesson: 3,
       totalLessons: 6,
       percent: 45,
@@ -146,6 +156,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'tbilisi',
         name: 'Тбилиси',
+        nameEn: 'Tbilisi',
         region: 'Тбилиси',
         coordinates: [41.7151, 44.8271],
         quests: [
@@ -157,6 +168,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'batumi',
         name: 'Батуми',
+        nameEn: 'Batumi',
         region: 'Аджария',
         coordinates: [41.6168, 41.6367],
         quests: [
@@ -169,6 +181,7 @@ export const gameCountries: GameCountry[] = [
   {
     iso: 'TR',
     name: 'Турция',
+    nameEn: 'Türkiye',
     flag: '🇹🇷',
     opened: true,
     daily: {
@@ -177,6 +190,7 @@ export const gameCountries: GameCountry[] = [
     },
     weekly: {
       title: 'Онлайн-курс: «Османская архитектура за 10 минут»',
+      titleEn: 'Online course: Ottoman architecture in 10 minutes',
       lesson: 1,
       totalLessons: 5,
       percent: 20,
@@ -186,6 +200,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'istanbul',
         name: 'Стамбул',
+        nameEn: 'Istanbul',
         region: 'Стамбул',
         coordinates: [41.0082, 28.9784],
         quests: [
@@ -199,6 +214,7 @@ export const gameCountries: GameCountry[] = [
   {
     iso: 'BE',
     name: 'Бельгия',
+    nameEn: 'Belgium',
     flag: '🇧🇪',
     opened: true,
     daily: {
@@ -207,6 +223,7 @@ export const gameCountries: GameCountry[] = [
     },
     weekly: {
       title: 'Онлайн-курс: «Фламандские примитивы за 10 минут»',
+      titleEn: 'Online course: The Flemish Primitives in 10 minutes',
       lesson: 6,
       totalLessons: 6,
       percent: 100,
@@ -216,6 +233,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'brussels',
         name: 'Брюссель',
+        nameEn: 'Brussels',
         region: 'Брюссельский столичный регион',
         coordinates: [50.8503, 4.3517],
         quests: [
@@ -227,6 +245,7 @@ export const gameCountries: GameCountry[] = [
       {
         id: 'bruges',
         name: 'Брюгге',
+        nameEn: 'Bruges',
         region: 'Западная Фландрия',
         coordinates: [51.2093, 3.2247],
         quests: [
@@ -237,15 +256,15 @@ export const gameCountries: GameCountry[] = [
       },
     ],
   },
-  { iso: 'IT', name: 'Италия', flag: '🇮🇹', opened: false, cities: [] },
-  { iso: 'JP', name: 'Япония', flag: '🇯🇵', opened: false, cities: [] },
-  { iso: 'FR', name: 'Франция', flag: '🇫🇷', opened: false, cities: [] },
-  { iso: 'ES', name: 'Испания', flag: '🇪🇸', opened: false, cities: [] },
-  { iso: 'TH', name: 'Таиланд', flag: '🇹🇭', opened: false, cities: [] },
-  { iso: 'AE', name: 'ОАЭ', flag: '🇦🇪', opened: false, cities: [] },
-  { iso: 'DE', name: 'Германия', flag: '🇩🇪', opened: false, cities: [] },
-  { iso: 'EG', name: 'Египет', flag: '🇪🇬', opened: false, cities: [] },
-  { iso: 'ID', name: 'Индонезия', flag: '🇮🇩', opened: false, cities: [] },
+  { iso: 'IT', name: 'Италия', nameEn: 'Italy', flag: '🇮🇹', opened: false, cities: [] },
+  { iso: 'JP', name: 'Япония', nameEn: 'Japan', flag: '🇯🇵', opened: false, cities: [] },
+  { iso: 'FR', name: 'Франция', nameEn: 'France', flag: '🇫🇷', opened: false, cities: [] },
+  { iso: 'ES', name: 'Испания', nameEn: 'Spain', flag: '🇪🇸', opened: false, cities: [] },
+  { iso: 'TH', name: 'Таиланд', nameEn: 'Thailand', flag: '🇹🇭', opened: false, cities: [] },
+  { iso: 'AE', name: 'ОАЭ', nameEn: 'United Arab Emirates', flag: '🇦🇪', opened: false, cities: [] },
+  { iso: 'DE', name: 'Германия', nameEn: 'Germany', flag: '🇩🇪', opened: false, cities: [] },
+  { iso: 'EG', name: 'Египет', nameEn: 'Egypt', flag: '🇪🇬', opened: false, cities: [] },
+  { iso: 'ID', name: 'Индонезия', nameEn: 'Indonesia', flag: '🇮🇩', opened: false, cities: [] },
 ]
 
 /** Страны, доступные для прохождения: по ним есть контент */
@@ -255,6 +274,18 @@ export const openedCountryIso = new Set(
 
 export function findCountry(iso: string): GameCountry | undefined {
   return gameCountries.find((c) => c.iso === iso)
+}
+
+export function gameCountryName(country: GameCountry, language: 'ru' | 'en') {
+  return language === 'en' ? country.nameEn : country.name
+}
+
+export function gameCityName(city: QuestCity, language: 'ru' | 'en') {
+  return language === 'en' ? city.nameEn : city.name
+}
+
+export function weeklyTrackTitle(track: WeeklyTrack, language: 'ru' | 'en') {
+  return language === 'en' ? track.titleEn : track.title
 }
 
 /** Поездка, совершённая до Crista: страна уже закрыта, штампы в паспорте есть */

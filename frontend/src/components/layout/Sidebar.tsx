@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -13,23 +13,25 @@ import { RailButton } from './SidebarRail'
 
 import { cn, getInitials } from '@/lib/utils'
 import { Logo } from '@/components/icons/Logo'
+import { getNavigationCopy } from '@/lib/settingsCopy'
 
 const menuItems = [
-  { icon: Globe2, label: 'Изучение мира', id: 'game' },
-  { icon: BookOpen, label: 'Crista Wiki', id: 'data' },
-  { icon: MessageSquare, label: 'AI-маршруты', id: 'chats' },
-  { icon: Luggage, label: 'Паспорт', id: 'suitcase' },
+  { icon: Globe2, id: 'game' },
+  { icon: BookOpen, id: 'data' },
+  { icon: MessageSquare, id: 'chats' },
+  { icon: Luggage, id: 'suitcase' },
 ] as const
 
 type MenuId = (typeof menuItems)[number]['id']
 
 export function Sidebar() {
   const navigate = useNavigate()
-  const [lang, setLang] = useState<'ru' | 'en'>('ru')
   const {
     user,
     theme,
     toggleTheme,
+    language,
+    setLanguage,
     sidebarOpen,
     setSidebarOpen,
     newChat,
@@ -39,6 +41,13 @@ export function Sidebar() {
     mainView,
     currentChatId,
   } = useApp()
+  const copy = getNavigationCopy(language)
+  const labels: Record<MenuId, string> = {
+    game: copy.explore,
+    data: copy.wiki,
+    chats: copy.routes,
+    suitcase: copy.passport,
+  }
 
   const activeMenuId = useMemo<MenuId>(() => {
     if (currentChatId) return 'chats'
@@ -60,8 +69,8 @@ export function Sidebar() {
     setMainView(id === 'chats' ? 'chatList' : id)
   }
 
-  const langLabel = lang === 'ru' ? 'Переключить на английский' : 'Переключить на русский'
-  const themeLabel = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'
+  const langLabel = language === 'ru' ? copy.switchToEnglish : copy.switchToRussian
+  const themeLabel = theme === 'dark' ? copy.lightTheme : copy.darkTheme
   const ThemeIcon = theme === 'dark' ? Sun : Moon
 
   /* ------------------------------------------------------- профиль (общий) */
@@ -81,7 +90,7 @@ export function Sidebar() {
         <div className="flex-1 text-left">
           <p className="text-sm font-semibold text-text">{user.name}</p>
           <p className="text-xs text-text-muted">
-            {user.subscription === 'premium' ? 'Премиум' : 'Бесплатный план'}
+            {user.subscription === 'premium' ? copy.premium : copy.freePlan}
           </p>
         </div>
         <ChevronRight className="h-4 w-4 text-text-muted" />
@@ -95,14 +104,14 @@ export function Sidebar() {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-text transition-colors hover:bg-surface-hover"
         >
           <Settings className="h-4 w-4 text-text-muted" />
-          Настройки аккаунта
+          {copy.accountSettings}
         </button>
         <button
           onClick={() => navigate('/support')}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-text transition-colors hover:bg-surface-hover"
         >
           <HelpCircle className="h-4 w-4 text-text-muted" />
-          Поддержка
+          {copy.support}
         </button>
       </div>
 
@@ -114,7 +123,7 @@ export function Sidebar() {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-text transition-colors hover:bg-surface-hover"
         >
           <LogOut className="h-4 w-4 text-text-muted" />
-          Выйти
+          {copy.logout}
         </button>
       </div>
     </PopoverContent>
@@ -137,7 +146,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Закрыть меню"
+          aria-label={copy.closeMenu}
           onClick={() => setSidebarOpen(false)}
         >
           <X className="h-4 w-4" />
@@ -157,7 +166,7 @@ export function Sidebar() {
             )}
           >
             <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
+            {labels[item.id]}
           </button>
         ))}
       </nav>
@@ -165,7 +174,7 @@ export function Sidebar() {
       <div className="mt-4 px-3">
         <Button onClick={() => { newChat(); setSidebarOpen(false) }} variant="outline" className="w-full">
           <Plus />
-          Новый чат
+          {copy.newChat}
         </Button>
       </div>
 
@@ -173,13 +182,13 @@ export function Sidebar() {
 
       <div className="space-y-1 border-t border-border p-3">
         <button
-          onClick={() => setLang((p) => (p === 'ru' ? 'en' : 'ru'))}
+          onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 font-sans text-sm text-text-secondary transition-colors hover:bg-panel-2 hover:text-text"
         >
           <Languages className="h-4 w-4" />
-          <span className="flex-1 text-left">{lang === 'ru' ? 'Русский' : 'English'}</span>
+          <span className="flex-1 text-left">{language === 'ru' ? 'Русский' : 'English'}</span>
           <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase text-text-muted">
-            {lang === 'ru' ? 'EN' : 'RU'}
+            {language === 'ru' ? 'EN' : 'RU'}
           </span>
         </button>
         <button
@@ -200,7 +209,7 @@ export function Sidebar() {
       <aside className="relative z-20 hidden h-full shrink-0 lg:block">
         <div className="flex h-full w-[72px] flex-col items-center py-4">
           <div className="shrink-0">
-            <RailButton icon={Plus} label="Новый чат" onClick={newChat} />
+            <RailButton icon={Plus} label={copy.newChat} onClick={newChat} />
           </div>
 
           <div className="my-3 h-px w-8 shrink-0 bg-hairline-2" />
@@ -212,7 +221,7 @@ export function Sidebar() {
               <RailButton
                 key={item.id}
                 icon={item.icon}
-                label={item.label}
+                label={labels[item.id]}
                 active={activeMenuId === item.id}
                 onClick={() => openSection(item.id)}
               />
@@ -226,7 +235,7 @@ export function Sidebar() {
               icon={Languages}
               label={langLabel}
               muted
-              onClick={() => setLang((p) => (p === 'ru' ? 'en' : 'ru'))}
+              onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')}
             />
             <RailButton icon={ThemeIcon} label={themeLabel} muted onClick={toggleTheme} />
 
@@ -234,7 +243,7 @@ export function Sidebar() {
               <Popover>
                 <PopoverTrigger asChild>
                   <button
-                    aria-label={`Профиль: ${user.name}`}
+                    aria-label={copy.profile(user.name)}
                     className="mt-1 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950"
                   >
                     <Avatar className="h-9 w-9 border border-hairline-2">
@@ -250,7 +259,7 @@ export function Sidebar() {
             ) : (
               <Link
                 to="/login"
-                aria-label="Войти в аккаунт"
+                aria-label={copy.signIn}
                 className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-primary transition hover:bg-primary/30"
               >
                 <User className="h-4 w-4" />

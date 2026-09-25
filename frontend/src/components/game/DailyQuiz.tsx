@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, X, Flame, Sparkles, ArrowRight, RotateCcw } from 'lucide-react'
 import { GlassPanel, Chip } from '@/components/ui/glass'
 import { Button } from '@/components/ui/button'
-import { questionsForCountry } from '@/mocks/quiz'
+import { questionsForCountry, quizContent } from '@/mocks/quiz'
 import { cn } from '@/lib/utils'
+import { getHomeCopy } from '@/lib/homeCopy'
+import { useApp } from '@/context/AppContext'
 
 interface DailyQuizProps {
   countryIso: string
@@ -26,6 +28,8 @@ export function DailyQuiz({
   onReset,
   streak,
 }: DailyQuizProps) {
+  const { language } = useApp()
+  const copy = getHomeCopy(language)
   const [picked, setPicked] = useState<number | null>(null)
   // Отвеченный вопрос удерживаем на экране: без этого список сразу
   // подставлял следующий, унаследовав отметку от предыдущего ответа
@@ -59,7 +63,7 @@ export function DailyQuiz({
     return (
       <GlassPanel variant="flat" className="p-4">
         <p className="font-sans text-sm text-text-muted">
-          Вопросы появятся, когда {countryName} будет открыта
+          {copy.quizUnavailable(countryName)}
         </p>
       </GlassPanel>
     )
@@ -70,7 +74,7 @@ export function DailyQuiz({
       <GlassPanel variant="flat" className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-sans text-xs uppercase tracking-wide text-text-muted">
-            Вопрос дня
+            {copy.questionOfDay}
           </span>
           <Chip size="sm" variant="active">
             <Flame />
@@ -78,10 +82,10 @@ export function DailyQuiz({
           </Chip>
         </div>
         <p className="mb-1 font-sans text-sm font-medium text-text">
-          Вопросы по стране {countryName} закончились
+          {copy.questionsFinished(countryName)}
         </p>
         <p className="mb-3 font-sans text-xs text-text-muted">
-          Вы ответили на все {all.length}. Новые появятся завтра.
+          {copy.allQuestionsAnswered(all.length)}
         </p>
         <Button
           variant="ghost"
@@ -92,22 +96,24 @@ export function DailyQuiz({
           }}
         >
           <RotateCcw />
-          Пройти заново
+          {copy.tryAgain}
         </Button>
       </GlassPanel>
     )
   }
 
+  const localizedQuestion = quizContent(current, language)
+
   return (
     <GlassPanel variant="flat" className="p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="font-sans text-xs uppercase tracking-wide text-text-muted">
-          Вопрос дня
+          {copy.questionOfDay}
         </span>
         <span className="flex items-center gap-2">
           <Chip size="sm">
             <span className="tabular">
-              {all.filter((q) => answeredIds.has(q.id)).length + (answered ? 0 : 1)} из {all.length}
+              {copy.quizProgress(all.filter((q) => answeredIds.has(q.id)).length + (answered ? 0 : 1), all.length)}
             </span>
           </Chip>
           <Chip size="sm" variant="active">
@@ -118,11 +124,11 @@ export function DailyQuiz({
       </div>
 
       <p className="mb-3 font-sans text-sm font-medium leading-relaxed text-text">
-        {current.question}
+        {localizedQuestion.question}
       </p>
 
       <div className="space-y-2">
-        {current.options.map((option, i) => {
+        {localizedQuestion.options.map((option, i) => {
           const isRight = i === current.correct
           const isPicked = picked === i
           return (
@@ -163,17 +169,17 @@ export function DailyQuiz({
             {isCorrect ? (
               <>
                 <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
-                <span className="text-primary">Верно, плюс {current.points} очков</span>
+                <span className="text-primary">{copy.correctAnswer(current.points)}</span>
               </>
             ) : (
-              <span className="text-text">Не угадали, но теперь знаете</span>
+              <span className="text-text">{copy.incorrectAnswer}</span>
             )}
           </p>
           <p className="font-sans text-xs leading-relaxed text-text-secondary">
-            {current.explanation}
+            {localizedQuestion.explanation}
           </p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={next}>
-            {remaining.length > 1 ? 'Следующий вопрос' : 'Завершить'}
+            {remaining.length > 1 ? copy.nextQuestion : copy.finishQuiz}
             <ArrowRight />
           </Button>
         </div>

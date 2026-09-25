@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowLeft, Globe2, PiggyBank, Trophy,
   TrendingDown, MapPin, ChevronRight, BookOpenCheck, RotateCcw,
@@ -13,11 +13,17 @@ import { OnboardingFlow } from './OnboardingFlow'
 import { MoscowQuest } from './MoscowQuest'
 import { MoscowPath } from './MoscowPath'
 import { MoscowBoss } from './MoscowBoss'
+import { MoscowSandbox } from './MoscowSandbox'
+import { CityPilot } from './CityPilot'
 import { useGameProgress } from '@/hooks/useGameProgress'
 import { useApp } from '@/context/AppContext'
-import { isMockMode } from '@/api/chatApi'
-import { gameCountries, findCountry, questCategoryLabel } from '@/mocks/game'
+import { ApiError, isMockMode } from '@/api/chatApi'
+import { gameCountries, findCountry, gameCountryName, questCategoryLabel, weeklyTrackTitle } from '@/mocks/game'
 import { cn } from '@/lib/utils'
+import { getGameCopy } from '@/lib/gameCopy'
+import { getGamePassport, type GamePassport } from '@/api/gameApi'
+import { fetchSuitcaseWorkspace, mapGoalFromApi, mapTripFromApi } from '@/api/suitcaseApi'
+import type { SuitcaseGoal, SuitcaseTrip } from '@/types/suitcase'
 
 type GamePanelProps = {
   onBack: () => void
@@ -67,19 +73,78 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
   const [pathVersion, setPathVersion] = useState(0)
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(null)
   const [bossSelected, setBossSelected] = useState(false)
+  const [passport, setPassport] = useState<GamePassport | null>(null)
+  const [passportLoading, setPassportLoading] = useState(false)
+  const [passportError, setPassportError] = useState(false)
+  const [passportRefreshVersion, setPassportRefreshVersion] = useState(0)
+  const [suitcase, setSuitcase] = useState<{ trips: SuitcaseTrip[]; goals: SuitcaseGoal[] } | null>(null)
+  const [suitcaseError, setSuitcaseError] = useState<string | null>(null)
+  const [suitcaseLoading, setSuitcaseLoading] = useState(false)
+  const [suitcaseRefreshVersion, setSuitcaseRefreshVersion] = useState(0)
+  const { setMainView, language } = useApp()
+  const copy = getGameCopy(language)
 
   const refreshPath = () => setPathVersion((version) => version + 1)
+
+  useEffect(() => {
+    if (!signedIn) {
+      setPassport(null)
+      setPassportError(false)
+      setPassportLoading(false)
+      return
+    }
+    let current = true
+    setPassportLoading(true)
+    setPassportError(false)
+    getGamePassport()
+      .then((result) => { if (current) setPassport(result) })
+      .catch(() => {
+        if (!current) return
+        setPassport(null)
+        setPassportError(true)
+      })
+      .finally(() => { if (current) setPassportLoading(false) })
+    return () => { current = false }
+  }, [signedIn, pathVersion, passportRefreshVersion])
+
+  useEffect(() => {
+    if (!signedIn) {
+      setSuitcase(null)
+      setSuitcaseError(null)
+      setSuitcaseLoading(false)
+      return
+    }
+    let current = true
+    setSuitcaseLoading(true)
+    setSuitcaseError(null)
+    fetchSuitcaseWorkspace()
+      .then((workspace) => {
+        if (current) setSuitcase({
+          trips: workspace.trips.map(mapTripFromApi),
+          goals: workspace.goals.map(mapGoalFromApi),
+        })
+      })
+      .catch((error: unknown) => {
+        if (!current) return
+        setSuitcase(null)
+        setSuitcaseError(error instanceof ApiError ? error.detail : copy.suitcaseLoadFailed)
+      })
+      .finally(() => { if (current) setSuitcaseLoading(false) })
+    return () => { current = false }
+  }, [signedIn, suitcaseRefreshVersion])
+
+  const activeSuitcaseTrips = suitcase?.trips.filter((trip) => !trip.isArchived) ?? []
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <IconButton label="Назад" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+          <IconButton label={copy.back} variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
             <ArrowLeft />
           </IconButton>
-          <h1 className="truncate font-display text-2xl font-semibold text-text">Первое путешествие</h1>
+          <h1 className="truncate font-display text-2xl font-semibold text-text">{copy.firstTrip}</h1>
         </div>
-        <Chip size="sm" variant="active"><Globe2 /> Россия · пилот</Chip>
+        <Chip size="sm" variant="active"><Globe2 /> {language === 'en' ? 'Russia · pilot' : copy.pilotTag}</Chip>
       </div>
 
       <div className="mx-auto w-full max-w-[1100px] space-y-5 px-5 pb-8 pt-4 sm:px-6">
@@ -110,10 +175,53 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
             }}
           />
         )}
+        <MoscowSandbox signedIn={signedIn} refreshKey={pathVersion} />
+        <CityPilot cityId="st-petersburg" signedIn={signedIn} refreshKey={pathVersion} onCompleted={refreshPath} />
+        <CityPilot cityId="sochi" signedIn={signedIn} refreshKey={pathVersion} onCompleted={refreshPath} />
+        {signedIn && passportLoading && <p role="status" className="font-sans text-sm text-text-secondary">{copy.passportLoading}</p>}
+        {signedIn && passportError && <div role="status" className="flex flex-wrap items-center gap-2 font-sans text-sm text-text-secondary">
+          <span>{copy.passportUnavailable}</span>
+          <button type="button" onClick={() => setPassportRefreshVersion((version) => version + 1)} className="text-primary underline underline-offset-2">{copy.retryPassport}</button>
+        </div>}
+        {passport && !passportLoading && !passportError && <GlassPanel variant="flat" className="p-4 sm:p-5">
+          <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.passportSource}</p>
+          <p className="mt-1 font-display text-xl font-semibold text-text">{passport.profile.xp} XP · {copy.stamps(passport.stamps.length)}</p>
+          <p className="mt-2 font-sans text-sm text-text-secondary">{passport.cities.map((city) => `${city.name}: ${city.completed_quests}/${city.required_quest_count}`).join(' · ')}</p>
+          <p className="mt-2 font-sans text-sm text-text-secondary">{passport.routes.length ? copy.savedRoutes(passport.routes.map((route) => `${route.name} — ${route.destination}`).join(' · ')) : copy.noSavedRoutes}</p>
+        </GlassPanel>}
+        {signedIn && <GlassPanel variant="flat" className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.suitcaseSource}</p>
+              {suitcaseLoading && <p className="mt-2 font-sans text-sm text-text-secondary">{copy.suitcaseLoading}</p>}
+              {suitcaseError && <div role="status" className="mt-2 flex flex-wrap items-center gap-2 font-sans text-sm text-text-secondary">
+                <span>{copy.suitcaseUnavailable(suitcaseError)}</span>
+                <button type="button" onClick={() => setSuitcaseRefreshVersion((version) => version + 1)} className="text-primary underline underline-offset-2">{copy.retrySuitcase}</button>
+              </div>}
+              {!suitcaseLoading && !suitcaseError && suitcase && <>
+                <p className="mt-1 font-display text-lg font-semibold text-text">
+                  {copy.tripsAndGoals(activeSuitcaseTrips.length, suitcase.goals.length)}
+                </p>
+                <p className="mt-2 font-sans text-sm text-text-secondary">
+                  {activeSuitcaseTrips.length
+                    ? activeSuitcaseTrips.slice(0, 3).map((trip) => `${trip.city}, ${trip.country}`).join(' · ')
+                    : copy.noTrips}
+                </p>
+                {suitcase.goals.length > 0 && <ul className="mt-2 space-y-1 font-sans text-sm text-text-secondary">
+                  {suitcase.goals.slice(0, 3).map((goal) => (
+                    <li key={goal.id}>{goal.title}: {goal.current} / {goal.total}</li>
+                  ))}
+                </ul>}
+              </>}
+            </div>
+            <button type="button" onClick={() => setMainView('suitcase')} className="shrink-0 rounded-full border border-white/15 px-3 py-2 font-sans text-sm text-text hover:bg-white/5">
+              {copy.openSuitcase}
+            </button>
+          </div>
+        </GlassPanel>}
         <GlassPanel variant="flat" className="p-4 sm:p-5">
           <p className="font-sans text-sm leading-6 text-text-secondary">
-            У маршрута десять проверяемых сервером точек. После них открывается финальный круг из трёх вопросов и городской штамп.
-            Карта мира, ежедневные квизы и ручное закрытие точек пока доступны только в демонстрационном режиме.
+            {copy.liveModeNote}
           </p>
         </GlassPanel>
       </div>
@@ -122,6 +230,8 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
 }
 
 function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string | null }) {
+  const { language } = useApp()
+  const copy = getGameCopy(language)
   const [selectedIso, setSelectedIso] = useState<string>('RU')
   const [showPassport, setShowPassport] = useState(false)
   const [openCountry, setOpenCountry] = useState<string | null>(null)
@@ -137,6 +247,7 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
 
   // Фокус, треки и копилка следуют за выбранной на карте страной
   const focus = country
+  const focusName = gameCountryName(focus, language)
   const focusProgress = progress
   const weekly = country.weekly
   const savings = country.savings
@@ -177,19 +288,19 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
       <div className="relative z-10">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <IconButton label="Назад" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+            <IconButton label={copy.backToMap} variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
               <ArrowLeft />
             </IconButton>
-            <h1 className="truncate font-display text-2xl font-semibold text-text">Охват мира</h1>
+            <h1 className="truncate font-display text-2xl font-semibold text-text">{copy.worldCoverage}</h1>
           </div>
           <div className="hidden shrink-0 items-center gap-2 sm:flex">
             <Chip size="sm">
               <Globe2 />
-              <span className="tabular">{stats.openedCountries} из 195 стран</span>
+              <span className="tabular">{copy.openCountriesCount(stats.openedCountries)}</span>
             </Chip>
             <Chip size="sm" variant="active">
               <Trophy />
-              <span className="tabular">{stats.doneQuests} из {stats.totalQuests} квестов</span>
+              <span className="tabular">{copy.questsCount(stats.doneQuests, stats.totalQuests)}</span>
             </Chip>
           </div>
         </div>
@@ -199,9 +310,9 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
         {/* Карта мира */}
         <section>
           <div className="mb-4 flex items-baseline justify-between gap-4">
-            <h2 className="font-display text-xl font-semibold text-text">Карта мира</h2>
+            <h2 className="font-display text-xl font-semibold text-text">{copy.worldMap}</h2>
             <p className="hidden font-sans text-xs text-text-muted sm:block">
-              Нажмите на открытую страну, чтобы попасть в её регионы и квесты
+              {copy.worldMapHint}
             </p>
           </div>
 
@@ -221,11 +332,11 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 font-sans text-xs text-text-muted">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-4 rounded-sm bg-primary/70" />
-              Открыто, идёт прогресс
+              {copy.openInProgress}
             </span>
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-4 rounded-sm bg-violet-700" />
-              Белые пятна
+              {copy.blankSpots}
             </span>
           </div>
         </section>
@@ -251,25 +362,25 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
               </span>
               <span>
                 <span className="block font-sans text-xs uppercase tracking-wide text-text-muted">
-                  Фокус страны
+                  {copy.countryFocus}
                 </span>
-                <DisplayTitle as="h2" className="!text-3xl">{focus.name}</DisplayTitle>
+                <DisplayTitle as="h2" className="!text-3xl">{focusName}</DisplayTitle>
                 <span className="mt-0.5 block font-sans text-sm tabular text-text-secondary">
-                  {focusProgress}% закрыто
+                  {copy.completedPercent(focusProgress)}
                 </span>
               </span>
             </div>
             {focusProgress === 100 ? (
-              <Chip variant="active"><Trophy /> Фокус закрыт</Chip>
+              <Chip variant="active"><Trophy /> {copy.focusComplete}</Chip>
             ) : (
-              <Chip variant="accent">До премиум-слоя {100 - focusProgress}%</Chip>
+              <Chip variant="accent">{copy.percentToPremium(100 - focusProgress)}</Chip>
             )}
           </div>
 
           <div className="mb-5 grid gap-4 sm:grid-cols-2">
             <DailyQuiz
               countryIso={country.iso}
-              countryName={country.name}
+              countryName={gameCountryName(country, language)}
               answeredIds={answeredQuizIds}
               onAnswer={answerQuiz}
               onReset={() => resetQuiz(country.iso)}
@@ -279,23 +390,23 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
             <GlassPanel variant="flat" className="p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="font-sans text-xs uppercase tracking-wide text-text-muted">
-                  Еженедельный трек
+                  {copy.weeklyTrack}
                 </span>
                 <BookOpenCheck className="h-4 w-4 text-accent-soft" aria-hidden="true" />
               </div>
               {weekly ? (
                 <>
-                  <p className="mb-3 font-sans text-sm font-medium text-text">{weekly.title}</p>
+                  <p className="mb-3 font-sans text-sm font-medium text-text">{weeklyTrackTitle(weekly, language)}</p>
                   <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
                     <div className="h-full rounded-full bg-accent" style={{ width: `${weekly.percent}%` }} />
                   </div>
                   <p className="font-sans text-xs tabular text-text-muted">
-                    Урок {weekly.lesson} из {weekly.totalLessons}, пройдено {weekly.percent}%
+                    {copy.lessonProgress(weekly.lesson, weekly.totalLessons, weekly.percent)}
                   </p>
                 </>
               ) : (
                 <p className="font-sans text-sm text-text-muted">
-                  Курс по стране появится после её открытия
+                  {copy.courseLocked}
                 </p>
               )}
             </GlassPanel>
@@ -303,13 +414,13 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
 
           {/* Категории считаются из реальных квестов выбранной страны */}
           <p className="mb-2.5 font-sans text-xs text-text-muted">
-            Категории по стране {country.name}
+            {copy.categoryProgress(gameCountryName(country, language))}
           </p>
           <div className="space-y-2.5">
             {(Object.keys(questCategoryLabel) as Array<keyof typeof questCategoryLabel>).map((key) => (
               <div key={key} className="flex items-center gap-3">
                 <span className="w-36 shrink-0 truncate font-sans text-xs text-text-secondary sm:w-44">
-                  {questCategoryLabel[key]}
+                  {copy.categoryNames[key]}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel-2">
                   <div
@@ -334,7 +445,7 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
               </span>
               <span>
                 <span className="block font-sans text-xs uppercase tracking-wide text-text-muted">
-                  Копилка
+                  {copy.savings}
                 </span>
                 <span className="block font-display text-xl font-semibold text-text">
                   {savings.destination}
@@ -352,7 +463,7 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
               <span className="font-semibold tabular text-text">
                 {savings.current.toLocaleString('ru')} ₽{' '}
                 <span className="font-normal text-text-muted">
-                  из {savings.target.toLocaleString('ru')} ₽
+                  {copy.amountOfTarget(savings.target.toLocaleString(language === 'en' ? 'en-US' : 'ru-RU'))} {language === 'en' ? 'RUB' : '₽'}
                 </span>
               </span>
               <span className="tabular text-text-muted">{savedPercent}%</span>
@@ -362,11 +473,11 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
               <Chip variant={savings.priceTrend < 0 ? 'active' : 'default'} size="sm">
                 <TrendingDown className={savings.priceTrend > 0 ? 'rotate-180' : undefined} />
                 {savings.priceTrend < 0
-                  ? `Билет подешевел на ${Math.abs(savings.priceTrend)}%`
-                  : `Билет подорожал на ${savings.priceTrend}%`}
+                  ? copy.ticketDown(Math.abs(savings.priceTrend))
+                  : copy.ticketUp(savings.priceTrend)}
               </Chip>
               <span className="font-sans text-xs tabular text-text-muted">
-                Рекомендуем откладывать {savings.weekly.toLocaleString('ru')} ₽ в неделю
+                {copy.weeklySavings(savings.weekly.toLocaleString(language === 'en' ? 'en-US' : 'ru-RU'))}
               </span>
             </div>
           </GlassPanel>
@@ -381,9 +492,9 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
             <span className="flex items-center gap-3">
               <Trophy className="h-5 w-5 text-primary" aria-hidden="true" />
               <span>
-                <span className="block font-sans text-sm font-semibold text-text">Тревел-паспорт</span>
+                <span className="block font-sans text-sm font-semibold text-text">{copy.passport}</span>
                 <span className="block font-sans text-xs tabular text-text-muted">
-                  Закрыто стран: {stats.closedCountries}
+                  {copy.closedCountries(stats.closedCountries)}
                 </span>
               </span>
             </span>
@@ -395,13 +506,13 @@ function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string
             className="flex items-center gap-2 rounded-lg border border-hairline px-4 py-3 font-sans text-sm text-text-muted transition-colors hover:border-hairline-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Сбросить прогресс
+            {copy.resetProgress}
           </button>
         </div>
 
         <p className="flex items-start gap-2 px-1 font-sans text-xs leading-relaxed text-text-muted">
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Пилотные города фазы 0: Москва, Санкт-Петербург и Сочи. Прогресс сохраняется в браузере.
+          {copy.pilotCitiesNote}
         </p>
       </div>
     </div>

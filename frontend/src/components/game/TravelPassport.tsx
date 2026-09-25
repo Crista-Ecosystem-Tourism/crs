@@ -1,8 +1,10 @@
 import { ArrowLeft, Share2, Stamp as StampIcon, Lock, Globe2 } from 'lucide-react'
 import { Chip, IconButton } from '@/components/ui/glass'
 import { Button } from '@/components/ui/button'
-import { gameCountries, type GameCountry } from '@/mocks/game'
+import { gameCountries, gameCountryName, gameCityName, type GameCountry } from '@/mocks/game'
 import { cn } from '@/lib/utils'
+import { useApp } from '@/context/AppContext'
+import { getGameCopy } from '@/lib/gameCopy'
 
 interface TravelPassportProps {
   onBack: () => void
@@ -68,7 +70,7 @@ function Stamp({ stamp }: { stamp: StampData }) {
  * Гербовая печать за полностью закрытую страну. Крупнее городских штампов:
  * двойное кольцо, звёзды по краю и дата закрытия, как на визовом оттиске.
  */
-function CountrySeal({ country, tilt }: { country: GameCountry; tilt: number }) {
+function CountrySeal({ country, tilt, language, closedLabel }: { country: GameCountry; tilt: number; language: 'ru' | 'en'; closedLabel: string }) {
   return (
     <div
       className="relative flex aspect-square items-center justify-center rounded-full border-[3px] border-[#1A6F7C]/75 bg-[#1A6F7C]/10 p-2 text-center text-[#12545E] transition-transform duration-slow ease-standard hover:rotate-0"
@@ -80,10 +82,10 @@ function CountrySeal({ country, tilt }: { country: GameCountry; tilt: number }) 
       <span className="relative flex flex-col items-center leading-none">
         <span className="text-lg" aria-hidden="true">{country.flag}</span>
         <span className="mt-1 font-display text-[15px] font-semibold uppercase tracking-tight">
-          {country.name}
+          {gameCountryName(country, language)}
         </span>
         <span className="mt-1 font-sans text-[8px] uppercase tracking-[0.14em] opacity-80">
-          закрыта
+          {closedLabel}
         </span>
         <span className="mt-0.5 font-mono text-[8px] tabular opacity-70">
           {country.iso} 100%
@@ -99,6 +101,8 @@ export function TravelPassport({
   cityProgress,
   ownerName,
 }: TravelPassportProps) {
+  const { language } = useApp()
+  const copy = getGameCopy(language)
   const opened = gameCountries.filter((c) => c.opened)
 
   const stamps: StampData[] = []
@@ -106,8 +110,8 @@ export function TravelPassport({
     const cp = countryProgress(country.iso)
     stamps.push({
       id: `country-${country.iso}`,
-      title: country.name,
-      subtitle: cp === 100 ? 'страна закрыта' : `${cp}% пройдено`,
+      title: gameCountryName(country, language),
+      subtitle: cp === 100 ? copy.closed : copy.completedPercent(cp),
       earned: cp === 100,
       major: true,
       tilt: ((ci % 3) - 1) * 4,
@@ -116,8 +120,8 @@ export function TravelPassport({
       const p = cityProgress(country, city.id)
       stamps.push({
         id: `city-${city.id}`,
-        title: city.name,
-        subtitle: p === 100 ? 'город закрыт' : `${p}%`,
+        title: gameCityName(city, language),
+        subtitle: p === 100 ? copy.closed : copy.completedPercent(p),
         earned: p === 100,
         major: false,
         tilt: (((ci + idx) % 5) - 2) * 3.5,
@@ -133,16 +137,16 @@ export function TravelPassport({
       <div className="relative z-10">
         <div className="mx-auto flex max-w-[980px] items-center justify-between gap-3 px-5 pb-2 pt-6 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <IconButton label="Назад к карте" variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+            <IconButton label={copy.backToMap} variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
               <ArrowLeft />
             </IconButton>
             <h1 className="truncate font-display text-2xl font-semibold text-text">
-              Тревел-паспорт
+              {copy.passport}
             </h1>
           </div>
           <Chip size="sm">
             <StampIcon />
-            <span className="tabular">{earned.length} из {stamps.length}</span>
+            <span className="tabular">{language === 'en' ? `${earned.length} of ${stamps.length}` : `${earned.length} из ${stamps.length}`}</span>
           </Chip>
         </div>
       </div>
@@ -176,7 +180,7 @@ export function TravelPassport({
                 <dl className="min-w-0 flex-1 space-y-2.5">
                   <div>
                     <dt className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                      Владелец
+                      {copy.passportOwner}
                     </dt>
                     <dd className="truncate font-display text-xl font-semibold leading-tight text-ink-950/85">
                       {ownerName}
@@ -184,14 +188,14 @@ export function TravelPassport({
                   </div>
                   <div>
                     <dt className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                      Документ
+                      {copy.document}
                     </dt>
                     <dd className="font-sans text-sm text-ink-950/75">Тревел-паспорт</dd>
                   </div>
                   <div className="flex gap-6">
                     <div>
                       <dt className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                        Стран
+                        {copy.countriesLabel}
                       </dt>
                       <dd className="font-sans text-sm tabular text-ink-950/75">
                         {closedCountries.length}
@@ -199,7 +203,7 @@ export function TravelPassport({
                     </div>
                     <div>
                       <dt className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                        Штампов
+                        {copy.stampsLabel}
                       </dt>
                       <dd className="font-sans text-sm tabular text-ink-950/75">{earned.length}</dd>
                     </div>
@@ -211,11 +215,11 @@ export function TravelPassport({
               {closedCountries.length > 0 && (
                 <div className="mt-6 border-t border-ink-950/10 pt-4">
                   <p className="mb-3 font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                    Печати за закрытые страны
+                    {copy.countrySeals}
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     {closedCountries.map((c, i) => (
-                      <CountrySeal key={c.iso} country={c} tilt={((i % 3) - 1) * 5} />
+                      <CountrySeal key={c.iso} country={c} tilt={((i % 3) - 1) * 5} language={language} closedLabel={copy.closed} />
                     ))}
                   </div>
                 </div>
@@ -233,22 +237,22 @@ export function TravelPassport({
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-ink-950/10 pb-3">
                 <div>
                   <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-950/60">
-                    Отметки о посещении
+                    {copy.visitMarks}
                   </p>
-                  <p className="font-display text-xl font-semibold text-ink-950/85">Страница 1</p>
+                  <p className="font-display text-xl font-semibold text-ink-950/85">{copy.page(1)}</p>
                 </div>
                 <Button variant="secondary" size="sm" disabled={earned.length === 0}>
                   <Share2 />
-                  Поделиться
+                  {copy.share}
                 </Button>
               </div>
 
               {earned.length === 0 ? (
                 <div className="py-12 text-center">
                   <StampIcon className="mx-auto mb-3 h-9 w-9 text-ink-950/25" aria-hidden="true" />
-                  <p className="font-sans text-sm text-ink-950/60">Страница пока чистая</p>
+                  <p className="font-sans text-sm text-ink-950/60">{copy.emptyPage}</p>
                   <p className="mx-auto mt-1 max-w-[40ch] font-sans text-xs leading-relaxed text-ink-950/60">
-                    Закройте все квесты города, чтобы получить первый штамп.
+                    {copy.firstStampHint}
                   </p>
                 </div>
               ) : (
@@ -264,8 +268,7 @@ export function TravelPassport({
 
         <p className="flex items-start gap-2 rounded-lg border border-dashed border-hairline-2 p-4 font-sans text-xs leading-relaxed text-text-muted">
           <StampIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          Штамп за город выдаётся при закрытии всех его квестов, за страну при закрытии всех городов.
-          Это документ Crista, он не имеет отношения к государственным паспортам.
+          {copy.passportDisclaimer}
         </p>
       </div>
     </div>
