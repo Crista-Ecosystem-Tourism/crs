@@ -1,52 +1,71 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
-    TouchableOpacity,
     SafeAreaView,
     StatusBar,
-    Dimensions
+    ActivityIndicator,
+    Modal,
+    TextInput,
+    TouchableOpacity,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
-
-const { width } = Dimensions.get('window');
-
-interface Goal {
-    id: string;
-    title: string;
-    current: number;
-    total: number;
-    icon: string;
-    color: string;
-}
-
-const INITIAL_GOALS: Goal[] = [
-    { id: '1', title: 'Countries Visited', current: 12, total: 30, icon: 'earth', color: '#007AFF' },
-    { id: '2', title: 'World Wonders', current: 3, total: 7, icon: 'medal', color: '#FF9500' },
-    { id: '3', title: 'Photo Collection', current: 450, total: 1000, icon: 'images', color: '#AF52DE' },
-    { id: '4', title: 'Flight Hours', current: 86, total: 200, icon: 'airplane', color: '#34C759' },
-];
+import { createGoal, deleteGoal, getGoals, updateGoal, type SuitcaseGoal } from '../../services/goals';
 
 export default function GoalsScreen() {
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
-    const [goals, setGoals] = useState<Goal[]>(INITIAL_GOALS);
+    const [goals, setGoals] = useState<SuitcaseGoal[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [draftTitle, setDraftTitle] = useState('');
+    const [draftTotal, setDraftTotal] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState(false);
+    const [updatingGoalId, setUpdatingGoalId] = useState<string | null>(null);
+    const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
+    const requestIdRef = useRef(0);
 
-    const renderGoal = (goal: Goal) => {
-        const progress = Math.min(goal.current / goal.total, 1);
+    const loadGoals = useCallback(async () => {
+        const requestId = ++requestIdRef.current;
+        setLoading(true);
+        setLoadError(false);
+        try {
+            const result = await getGoals();
+            if (requestIdRef.current === requestId) setGoals(result);
+        } catch (error) {
+            console.error('Fetch goals error:', error);
+            if (requestIdRef.current === requestId) setLoadError(true);
+        } finally {
+            if (requestIdRef.current === requestId) setLoading(false);
+        }
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadGoals();
+            return () => {
+                requestIdRef.current += 1;
+            };
+        }, [loadGoals])
+    );
+
+    const renderGoal = (goal: SuitcaseGoal) => {
+        const progress = goal.total > 0 ? Math.min(goal.current / goal.total, 1) : 0;
 
         return (
-            <TouchableOpacity
-                key={goal.id}
-                style={[styles.goalCard, { backgroundColor: colors.card }]}
-                activeOpacity={0.7}
-            >
+            <View key={goal.id} style={[styles.goalCard, { backgroundColor: colors.card }]}>
                 <View style={[styles.iconContainer, { backgroundColor: goal.color + '15' }]}>
-                    <Ionicons name={goal.icon as any} size={24} color={goal.color} />
+                    <Ionicons name="flag-outline" size={24} color={goal.color} />
                 </View>
 
                 <View style={styles.goalInfo}>
@@ -66,8 +85,98 @@ export default function GoalsScreen() {
                         />
                     </View>
                 </View>
-            </TouchableOpacity>
+                <View style={styles.goalActions}>
+                    <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={t.goals.advance}
+                        disabled={goal.current >= goal.total || updatingGoalId !== null || deletingGoalId !== null}
+                        onPress={() => void handleAdvanceGoal(goal)}
+                        style={[styles.advanceButton, { backgroundColor: colors.background }]}
+                    >
+                        {updatingGoalId === goal.id ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                            <Ionicons
+                                name={goal.current >= goal.total ? 'checkmark' : 'add'}
+                                size={22}
+                                color={goal.current >= goal.total ? colors.success : colors.primary}
+                            />
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={t.goals.deleteTitle}
+                        disabled={updatingGoalId !== null || deletingGoalId !== null}
+                        onPress={() => Alert.alert(t.goals.deleteTitle, t.goals.deleteMessage, [
+                            { text: t.alerts.cancelBtn, style: 'cancel' },
+                            { text: t.alerts.deleteBtn, style: 'destructive', onPress: () => void handleDeleteGoal(goal) },
+                        ])}
+                        style={[styles.advanceButton, { backgroundColor: colors.background }]}
+                    >
+                        {deletingGoalId === goal.id ? (
+                            <ActivityIndicator size="small" color={colors.error} />
+                        ) : (
+                            <Ionicons name="trash-outline" size={19} color={colors.error} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
         );
+    };
+
+    const activeGoals = goals.filter(goal => goal.current < goal.total).length;
+    const completedGoals = goals.length - activeGoals;
+
+    const handleAdvanceGoal = async (goal: SuitcaseGoal) => {
+        if (updatingGoalId !== null || deletingGoalId !== null || goal.current >= goal.total) return;
+        setUpdatingGoalId(goal.id);
+        try {
+            const updated = await updateGoal(goal.id, { current: Math.min(goal.current + 1, goal.total) });
+            setGoals(current => current.map(item => item.id === updated.id ? updated : item));
+        } catch (error) {
+            console.error('Update goal progress error:', error);
+            Alert.alert(t.alerts.error, t.goals.updateError);
+        } finally {
+            setUpdatingGoalId(null);
+        }
+    };
+
+    const handleDeleteGoal = async (goal: SuitcaseGoal) => {
+        if (updatingGoalId !== null || deletingGoalId !== null) return;
+        setDeletingGoalId(goal.id);
+        try {
+            await deleteGoal(goal.id);
+            setGoals(current => current.filter(item => item.id !== goal.id));
+        } catch (error) {
+            console.error('Delete goal error:', error);
+            Alert.alert(t.alerts.error, t.goals.deleteError);
+        } finally {
+            setDeletingGoalId(null);
+        }
+    };
+
+    const handleCreateGoal = async () => {
+        const title = draftTitle.trim();
+        const total = Number(draftTotal);
+        if (!title || !Number.isInteger(total) || total < 1) {
+            setCreateError(true);
+            return;
+        }
+
+        setCreating(true);
+        setCreateError(false);
+        try {
+            const goal = await createGoal({ title, current: 0, total, color: colors.primary });
+            setGoals(current => [...current, goal]);
+            setDraftTitle('');
+            setDraftTotal('');
+            setCreateOpen(false);
+        } catch (error) {
+            console.error('Create goal error:', error);
+            setCreateError(true);
+        } finally {
+            setCreating(false);
+        }
     };
 
     return (
@@ -76,7 +185,15 @@ export default function GoalsScreen() {
 
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>{t.tabs.goals || 'Goals'}</Text>
-                <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+                <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={t.goals.addGoalBtn}
+                    style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                        setCreateError(false);
+                        setCreateOpen(true);
+                    }}
+                >
                     <Ionicons name="add" size={24} color="#FFF" />
                 </TouchableOpacity>
             </View>
@@ -87,28 +204,102 @@ export default function GoalsScreen() {
             >
                 <View style={styles.statsOverview}>
                     <View style={[styles.statBox, { backgroundColor: colors.card }]}>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>4</Text>
-                        <Text style={[styles.statLabel, { color: colors.secondaryText }]}>Active</Text>
+                        <Text style={[styles.statValue, { color: colors.primary }]}>{activeGoals}</Text>
+                        <Text style={[styles.statLabel, { color: colors.secondaryText }]}>{t.goals.active}</Text>
                     </View>
                     <View style={[styles.statBox, { backgroundColor: colors.card }]}>
-                        <Text style={[styles.statValue, { color: colors.success }]}>12</Text>
-                        <Text style={[styles.statLabel, { color: colors.secondaryText }]}>Completed</Text>
+                        <Text style={[styles.statValue, { color: colors.success }]}>{completedGoals}</Text>
+                        <Text style={[styles.statLabel, { color: colors.secondaryText }]}>{t.goals.completed}</Text>
                     </View>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Goals</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t.goals.activeTitle}</Text>
+                {loading && goals.length === 0 && (
+                    <View style={styles.statusBox}>
+                        <ActivityIndicator color={colors.primary} size="large" />
+                        <Text style={[styles.statusText, { color: colors.secondaryText }]}>{t.goals.loading}</Text>
+                    </View>
+                )}
+                {loadError && (
+                    <View style={styles.statusBox}>
+                        <Text style={[styles.statusText, { color: colors.secondaryText }]}>{t.goals.loadError}</Text>
+                        <Text
+                            accessibilityRole="button"
+                            onPress={() => void loadGoals()}
+                            style={[styles.retryText, { color: colors.primary }]}
+                        >
+                            {t.goals.retry}
+                        </Text>
+                    </View>
+                )}
+                {!loading && !loadError && goals.length === 0 && (
+                    <Text style={[styles.statusText, { color: colors.secondaryText }]}>{t.goals.empty}</Text>
+                )}
                 {goals.map(renderGoal)}
-
-                <TouchableOpacity
-                    style={[styles.suggestCard, { borderColor: colors.border }]}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="bulb-outline" size={24} color={colors.primary} />
-                    <Text style={[styles.suggestText, { color: colors.text }]}>Need more goals? Tap here for ideas!</Text>
-                </TouchableOpacity>
 
                 <View style={{ height: 100 }} />
             </ScrollView>
+
+            <Modal
+                visible={createOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setCreateOpen(false)}
+            >
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>{t.goals.newGoal}</Text>
+                        <TextInput
+                            value={draftTitle}
+                            onChangeText={setDraftTitle}
+                            placeholder={t.goals.namePlaceholder}
+                            placeholderTextColor={colors.secondaryText}
+                            style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                            maxLength={80}
+                            editable={!creating}
+                        />
+                        <TextInput
+                            value={draftTotal}
+                            onChangeText={setDraftTotal}
+                            placeholder={t.goals.targetPlaceholder}
+                            placeholderTextColor={colors.secondaryText}
+                            keyboardType="number-pad"
+                            style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                            editable={!creating}
+                        />
+                        {createError && (
+                            <Text style={[styles.formError, { color: colors.error }]}>
+                                {!draftTitle.trim() || !Number.isInteger(Number(draftTotal)) || Number(draftTotal) < 1
+                                    ? t.goals.validationError
+                                    : t.goals.createError}
+                            </Text>
+                        )}
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                accessibilityRole="button"
+                                onPress={() => setCreateOpen(false)}
+                                disabled={creating}
+                                style={styles.modalAction}
+                            >
+                                <Text style={{ color: colors.secondaryText }}>{t.alerts.cancelBtn}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                accessibilityRole="button"
+                                onPress={() => void handleCreateGoal()}
+                                disabled={creating}
+                                style={[styles.modalAction, styles.primaryAction, { backgroundColor: colors.primary }]}
+                            >
+                                {creating
+                                    ? <ActivityIndicator color="#FFF" />
+                                    : <Text style={styles.primaryActionText}>{t.goals.create}</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -130,9 +321,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     addBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -163,6 +354,67 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 16,
     },
+    statusBox: {
+        alignItems: 'center',
+        padding: 24,
+        marginBottom: 12,
+    },
+    statusText: {
+        textAlign: 'center',
+        marginVertical: 8,
+    },
+    retryText: {
+        padding: 8,
+        fontWeight: '700',
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    modalCard: {
+        padding: 20,
+        paddingBottom: 32,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        gap: 12,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    input: {
+        minHeight: 48,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        fontSize: 16,
+    },
+    formError: {
+        fontSize: 13,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+        marginTop: 4,
+    },
+    modalAction: {
+        minWidth: 96,
+        minHeight: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        borderRadius: 12,
+    },
+    primaryAction: {
+        minWidth: 120,
+    },
+    primaryActionText: {
+        color: '#FFF',
+        fontWeight: '700',
+    },
     goalCard: {
         flexDirection: 'row',
         padding: 16,
@@ -180,6 +432,15 @@ const styles = StyleSheet.create({
     },
     goalInfo: {
         flex: 1,
+    },
+    goalActions: { flexDirection: 'row', alignItems: 'center', marginLeft: 8 },
+    advanceButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 12,
     },
     goalHeader: {
         flexDirection: 'row',
@@ -203,20 +464,5 @@ const styles = StyleSheet.create({
     progressBarFill: {
         height: '100%',
         borderRadius: 3,
-    },
-    suggestCard: {
-        marginTop: 12,
-        padding: 20,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    suggestText: {
-        fontSize: 15,
-        fontWeight: '500',
-        flex: 1,
     },
 });
