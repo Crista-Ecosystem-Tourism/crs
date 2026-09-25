@@ -15,6 +15,11 @@ class User(Base, TimestampMixin):
     email: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True, index=True)
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_editor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    vision_consent_granted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    vision_consent_version: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    preferred_theme: Mapped[str] = mapped_column(String, default="dark", nullable=False)
+    preferred_language: Mapped[str] = mapped_column(String, default="ru", nullable=False)
     auth_provider: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 'password', 'google', 'github', ...
     hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 

@@ -11,6 +11,11 @@ from app.api.chat import router as chat_router
 from app.api.auth import router as auth_router
 from app.api.travel_data import router as travel_data_router
 from app.api.game import router as game_router
+from app.api.wiki import router as wiki_router
+from app.api.vision import router as vision_router
+from app.api.social import router as social_router
+from app.api.tips import router as tips_router
+from app.api.media import router as media_router
 
 
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -56,6 +61,11 @@ app.include_router(chat_router)
 app.include_router(auth_router)
 app.include_router(travel_data_router)
 app.include_router(game_router)
+app.include_router(wiki_router)
+app.include_router(vision_router)
+app.include_router(social_router)
+app.include_router(tips_router)
+app.include_router(media_router)
 
 @app.get("/health")
 def health():

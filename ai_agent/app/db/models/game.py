@@ -21,6 +21,26 @@ class GameContentRevision(Base, TimestampMixin):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class GameContentTranslation(Base, TimestampMixin):
+    """An immutable localized edition attached to a canonical content revision."""
+
+    __tablename__ = "game_content_translation"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    content_revision_id: Mapped[str] = mapped_column(
+        ForeignKey("game_content_revision.id"), nullable=False
+    )
+    language: Mapped[str] = mapped_column(String, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("content_revision_id", "language", name="uq_game_content_translation_locale"),
+        Index("idx_game_content_translation_published", "content_revision_id", "language", "is_published"),
+    )
+
+
 class GameProfile(Base, TimestampMixin):
     __tablename__ = "game_profile"
 
@@ -28,6 +48,7 @@ class GameProfile(Base, TimestampMixin):
     xp: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     energy: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     energy_refreshed_on: Mapped[date] = mapped_column(Date, nullable=False)
+    practice_recovered_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_activity_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -64,6 +85,9 @@ class GameCity(Base, TimestampMixin):
     completion_stamp_key: Mapped[str | None] = mapped_column(String, nullable=True)
     completion_stamp_title: Mapped[str | None] = mapped_column(String, nullable=True)
     boss_content_revision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("game_content_revision.id"), nullable=True
+    )
+    sandbox_content_revision_id: Mapped[str | None] = mapped_column(
         ForeignKey("game_content_revision.id"), nullable=True
     )
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

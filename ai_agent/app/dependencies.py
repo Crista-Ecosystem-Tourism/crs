@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -12,6 +13,12 @@ from app.services.chat_session import ChatSessionService
 from app.services.user import UserService
 from app.services.saved_route import SavedRouteService
 from app.services.game_progress import GameProgressService
+from app.services.wiki import WikiService
+from app.services.social import SocialService
+from app.services.league_scheduler import league_settlement_loop
+from app.services.tips import TipService
+from app.services.media import MediaService
+from app.core.media_storage import create_media_storage
 
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider
@@ -30,6 +37,10 @@ _chat_session_service: ChatSessionService | None = None
 _user_service: UserService | None = None
 _saved_route_service: SavedRouteService | None = None
 _game_progress_service: GameProgressService | None = None
+_wiki_service: WikiService | None = None
+_social_service: SocialService | None = None
+_tip_service: TipService | None = None
+_media_service: MediaService | None = None
 
 _llm_model: OpenAIChatModel | None = None
 _preferences_agent: PreferencesAgent | None = None
@@ -64,9 +75,16 @@ def get_runtime_status() -> dict[str, object]:
         _user_service is not None,
         _saved_route_service is not None,
         _game_progress_service is not None,
+        _wiki_service is not None,
+        _social_service is not None,
+        _tip_service is not None,
+        _media_service is not None,
     ))
     return {
         "core_ready": core_ready,
+        "media_storage": {
+            "available": bool(_media_service and _media_service.storage.available),
+        },
         "ai": {
             "available": _ai_available,
             "reason": None if _ai_available else _ai_unavailable_reason,
@@ -76,7 +94,9 @@ def get_runtime_status() -> dict[str, object]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _engine, _session_factory, _http_client
-    global _history_service, _chat_session_service, _user_service, _saved_route_service, _game_progress_service
+    global _history_service, _chat_session_service, _user_service, _saved_route_service, _game_progress_service, _wiki_service, _social_service
+    global _tip_service
+    global _media_service
     global _llm_model, _preferences_agent, _search_agent, _message_processor
     global _ai_available, _ai_unavailable_reason
 
@@ -97,6 +117,13 @@ async def lifespan(app: FastAPI):
     _user_service = UserService(_session_factory)
     _saved_route_service = SavedRouteService(_session_factory)
     _game_progress_service = GameProgressService(_session_factory)
+    _wiki_service = WikiService(_session_factory)
+    _social_service = SocialService(_session_factory, _game_progress_service)
+    _tip_service = TipService(_session_factory)
+    _media_service = MediaService(
+        _session_factory,
+        create_media_storage(),
+    )
 
     api_key = _configured_openrouter_key()
     if api_key is None:
@@ -123,9 +150,15 @@ async def lifespan(app: FastAPI):
             _ai_available = False
             _ai_unavailable_reason = "AI provider initialization failed"
 
+    league_settlement_task = asyncio.create_task(league_settlement_loop(_social_service))
     try:
         yield
     finally:
+        league_settlement_task.cancel()
+        try:
+            await league_settlement_task
+        except asyncio.CancelledError:
+            pass
         if _http_client:
             await _http_client.aclose()
         if _engine:
@@ -138,6 +171,10 @@ async def lifespan(app: FastAPI):
         _user_service = None
         _saved_route_service = None
         _game_progress_service = None
+        _wiki_service = None
+        _social_service = None
+        _tip_service = None
+        _media_service = None
         _llm_model = None
         _preferences_agent = None
         _search_agent = None
@@ -171,6 +208,22 @@ def get_saved_route_service() -> SavedRouteService:
 
 def get_game_progress_service() -> GameProgressService:
     return _game_progress_service
+
+
+def get_wiki_service() -> WikiService:
+    return _wiki_service
+
+
+def get_social_service() -> SocialService:
+    return _social_service
+
+
+def get_tip_service() -> TipService:
+    return _tip_service
+
+
+def get_media_service() -> MediaService:
+    return _media_service
 
 def get_message_processor() -> MessageProcessor:
     if _message_processor is None:
