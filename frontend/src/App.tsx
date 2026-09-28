@@ -9,10 +9,16 @@ import { ProfilePage } from '@/components/profile/ProfilePage'
 import { SettingsPage } from '@/components/settings/SettingsPage'
 import { SupportPage } from '@/components/support/SupportPage'
 import { PublicTripMiniSite } from '@/components/trips/PublicTripMiniSite'
+import { PublicStarRoute } from '@/components/community/PublicStarRoute'
 
 function PublicTripRoute() {
   const { slug = '' } = useParams()
   return <PublicTripMiniSite slug={slug} />
+}
+
+function PublicStarRoutePage() {
+  const { routeId = '' } = useParams()
+  return <PublicStarRoute routeId={routeId} />
 }
 
 function App() {
@@ -22,6 +28,7 @@ function App() {
       <AppBackdrop />
       <Routes>
         <Route path="/t/:slug" element={<PublicTripRoute />} />
+        <Route path="/r/:routeId" element={<PublicStarRoutePage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<RegisterForm />} />
         <Route path="/profile" element={<ProfilePage />} />

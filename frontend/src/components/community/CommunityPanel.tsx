@@ -68,6 +68,9 @@ function StarRoutesSection({ language }: { language: 'ru' | 'en' }) {
         <span className="font-sans text-xs text-text-muted">{route.destination}</span>
       </div>
       <h2 className="font-display text-xl font-semibold leading-tight text-text">{route.title}</h2>
+      <a href={`/r/${encodeURIComponent(route.id)}`} className="mt-2 inline-block font-sans text-sm font-semibold text-primary hover:underline">
+        {en ? 'Open route page' : 'Открыть страницу маршрута'}
+      </a>
       <a href={route.source_url} target="_blank" rel="noreferrer" className="mt-2 block truncate font-sans text-xs text-primary hover:underline">
         {route.source_title}{route.source_author ? ` · ${route.source_author}` : ''}
       </a>

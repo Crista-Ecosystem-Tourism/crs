@@ -41,3 +41,13 @@ export async function getPublishedStarRoutes(): Promise<PublishedStarRoute[]> {
   }
   return response.json() as Promise<PublishedStarRoute[]>
 }
+
+export async function getPublishedStarRoute(routeId: string): Promise<PublishedStarRoute> {
+  const response = await fetch(`${API_BASE_URL}/star-routes/${encodeURIComponent(routeId)}`)
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`
+    try { detail = (await response.json()).detail || detail } catch { /* proxy or HTML response */ }
+    throw new ApiError(response.status, detail)
+  }
+  return response.json() as Promise<PublishedStarRoute>
+}
