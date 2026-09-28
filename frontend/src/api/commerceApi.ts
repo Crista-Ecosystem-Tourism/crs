@@ -24,6 +24,18 @@ export type AffiliateOffer = {
   updated_at: string
 }
 
+export type CommerceProduct = {
+  sku: string
+  kind: 'subscription' | 'expedition' | 'energy_pack' | 'cosmetic'
+  title: string
+  description: string | null
+  price_minor: number
+  currency: string
+  status: 'draft' | 'active' | 'archived'
+  provider_product_ref: string | null
+  updated_at: string
+}
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
@@ -58,6 +70,28 @@ export async function createAffiliateOffer(input: Omit<AffiliateOffer, 'id' | 'u
 
 export async function updateAffiliateOffer(id: string, input: Omit<AffiliateOffer, 'id' | 'updated_at'>): Promise<AffiliateOffer> {
   return parse<AffiliateOffer>(await fetch(`${API_BASE_URL}/commerce/editor/affiliate-offers/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(input),
+  }))
+}
+
+export async function getEditorCatalog(): Promise<CommerceProduct[]> {
+  return parse<CommerceProduct[]>(await fetch(`${API_BASE_URL}/commerce/editor/catalog`, {
+    headers: getAuthHeaders(),
+  }))
+}
+
+export async function createCatalogProduct(input: Omit<CommerceProduct, 'status' | 'updated_at'>): Promise<CommerceProduct> {
+  return parse<CommerceProduct>(await fetch(`${API_BASE_URL}/commerce/editor/catalog`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(input),
+  }))
+}
+
+export async function updateCatalogProduct(sku: string, input: Omit<CommerceProduct, 'sku' | 'kind' | 'updated_at'>): Promise<CommerceProduct> {
+  return parse<CommerceProduct>(await fetch(`${API_BASE_URL}/commerce/editor/catalog/${encodeURIComponent(sku)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(input),

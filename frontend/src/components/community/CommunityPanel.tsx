@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
 import { useApp } from '@/context/AppContext'
 import { isLoggedIn } from '@/api/authApi'
-import { createAffiliateOffer, getEditorAffiliateOffers, updateAffiliateOffer, type AffiliateOffer } from '@/api/commerceApi'
+import { createAffiliateOffer, createCatalogProduct, getEditorAffiliateOffers, getEditorCatalog, updateAffiliateOffer, updateCatalogProduct, type AffiliateOffer, type CommerceProduct } from '@/api/commerceApi'
 import { addStarRouteSegment, createStarRouteCandidate, getPublishedStarRoutes, getStarRouteReviewQueue, publishStarRoute, registerStarRouteTranscript, type PublishedStarRoute, type ReviewStarRoute, type StarRoutePoiInput } from '@/api/starRouteApi'
 import {
   acceptFriendInvite,
@@ -217,6 +217,79 @@ function AffiliateOfferEditor({ language, isEditor }: { language: 'ru' | 'en'; i
     </form>
     {offers.map((offer) => <div key={offer.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-3"><div className="min-w-0"><p className="font-semibold text-text">{offer.title}</p><p className="truncate text-xs text-text-muted">{offer.partner} · {offer.status}</p><a className="text-xs text-primary hover:underline" href={offer.terms_url} target="_blank" rel="noreferrer">{en ? 'Terms' : 'Условия'}</a></div><Button size="sm" variant="secondary" onClick={() => edit(offer)} disabled={busy}>{en ? 'Edit' : 'Изменить'}</Button></div>)}
     {!offers.length && !busy && <p className="text-sm text-text-secondary">{en ? 'No offers yet.' : 'Пока нет офферов.'}</p>}
+    {notice && <p role="status" className="text-sm text-text-secondary">{notice}</p>}
+  </GlassPanel>
+}
+
+type CatalogDraft = {
+  sku: string
+  kind: CommerceProduct['kind']
+  title: string
+  description: string
+  price_minor: string
+  currency: string
+  provider_product_ref: string
+  status: CommerceProduct['status']
+}
+const emptyCatalogProduct = (): CatalogDraft => ({ sku: '', kind: 'subscription', title: '', description: '', price_minor: '', currency: 'RUB', provider_product_ref: '', status: 'draft' })
+
+function CatalogEditor({ language, isEditor }: { language: 'ru' | 'en'; isEditor: boolean }) {
+  const en = language === 'en'
+  const [products, setProducts] = useState<CommerceProduct[]>([])
+  const [draft, setDraft] = useState<CatalogDraft>(emptyCatalogProduct)
+  const [editingSku, setEditingSku] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const refresh = useCallback(async () => {
+    if (!isEditor) return
+    setBusy(true)
+    try { setProducts(await getEditorCatalog()); setNotice(null) }
+    catch { setNotice(en ? 'Could not load the product catalog.' : 'Не удалось загрузить каталог продуктов.') }
+    finally { setBusy(false) }
+  }, [en, isEditor])
+  useEffect(() => { void refresh() }, [refresh])
+  if (!isEditor) return null
+
+  const updateDraft = <Key extends keyof CatalogDraft>(field: Key, value: CatalogDraft[Key]) => setDraft((current) => ({ ...current, [field]: value }))
+  const edit = (product: CommerceProduct) => {
+    setEditingSku(product.sku)
+    setDraft({ sku: product.sku, kind: product.kind, title: product.title, description: product.description || '', price_minor: String(product.price_minor), currency: product.currency, provider_product_ref: product.provider_product_ref || '', status: product.status })
+    setNotice(null)
+  }
+  const cancel = () => { setEditingSku(null); setDraft(emptyCatalogProduct()); setNotice(null) }
+  const save = async (event: FormEvent) => {
+    event.preventDefault()
+    const priceMinor = Number(draft.price_minor)
+    if (!Number.isInteger(priceMinor) || priceMinor < 0) { setNotice(en ? 'Price must be a non-negative integer in minor units.' : 'Цена должна быть неотрицательным целым числом в минимальных единицах.'); return }
+    setBusy(true); setNotice(null)
+    try {
+      const base = { title: draft.title, description: draft.description || null, price_minor: priceMinor, currency: draft.currency, provider_product_ref: draft.provider_product_ref || null }
+      const saved = editingSku
+        ? await updateCatalogProduct(editingSku, { ...base, status: draft.status })
+        : await createCatalogProduct({ sku: draft.sku, kind: draft.kind, ...base })
+      setProducts((items) => editingSku ? items.map((item) => item.sku === saved.sku ? saved : item) : [saved, ...items])
+      setNotice(editingSku ? (en ? 'Product updated.' : 'Продукт обновлён.') : (en ? 'Draft SKU created.' : 'Черновая SKU создана.'))
+      setEditingSku(null); setDraft(emptyCatalogProduct())
+    } catch {
+      setNotice(en ? 'Could not save the product. Active products need a provider reference.' : 'Не удалось сохранить продукт. Для active-позиции нужен provider reference.')
+    } finally { setBusy(false) }
+  }
+  const input = 'h-9 rounded-md border border-hairline bg-panel px-2 text-sm text-text'
+  return <GlassPanel className="mt-6 space-y-4 p-4">
+    <div><p className="font-sans text-xs uppercase tracking-wide text-text-muted">{en ? 'Commerce catalog · editorial' : 'Каталог оплаты · редактор'}</p><p className="mt-1 text-xs text-text-secondary">{en ? 'New SKUs stay drafts. An active product needs a provider reference, but checkout remains unavailable until the provider is configured.' : 'Новые SKU остаются черновиками. Для active-позиции нужен provider reference, но checkout останется недоступен до настройки провайдера.'}</p></div>
+    <form className="grid gap-2 sm:grid-cols-2" onSubmit={(event) => void save(event)}>
+      <input className={input} value={draft.sku} onChange={(event) => updateDraft('sku', event.target.value)} placeholder="SKU: crista_pass" disabled={Boolean(editingSku)} required />
+      <select className={input} value={draft.kind} onChange={(event) => updateDraft('kind', event.target.value as CommerceProduct['kind'])} disabled={Boolean(editingSku)}><option value="subscription">subscription</option><option value="expedition">expedition</option><option value="energy_pack">energy pack</option><option value="cosmetic">cosmetic</option></select>
+      <input className={input} value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder={en ? 'Product title' : 'Название продукта'} required />
+      <input className={input} value={draft.price_minor} onChange={(event) => updateDraft('price_minor', event.target.value)} inputMode="numeric" placeholder={en ? 'Price in minor units' : 'Цена в минимальных единицах'} required />
+      <input className={input} value={draft.currency} onChange={(event) => updateDraft('currency', event.target.value)} placeholder="RUB" required />
+      <input className={input} value={draft.provider_product_ref} onChange={(event) => updateDraft('provider_product_ref', event.target.value)} placeholder={en ? 'Provider product reference' : 'Provider product reference'} />
+      <input className={`${input} sm:col-span-2`} value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} placeholder={en ? 'Description, optional' : 'Описание, необязательно'} />
+      {editingSku && <select className={input} value={draft.status} onChange={(event) => updateDraft('status', event.target.value as CommerceProduct['status'])}><option value="draft">draft</option><option value="active">active</option><option value="archived">archived</option></select>}
+      <div className="flex gap-2"><Button size="sm" type="submit" disabled={busy}>{busy ? (en ? 'Saving…' : 'Сохраняем…') : editingSku ? (en ? 'Save product' : 'Сохранить продукт') : (en ? 'Create draft SKU' : 'Создать черновую SKU')}</Button>{editingSku && <Button size="sm" type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel' : 'Отмена'}</Button>}</div>
+    </form>
+    {products.map((product) => <div key={product.sku} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-3"><div className="min-w-0"><p className="font-semibold text-text">{product.title}</p><p className="truncate text-xs text-text-muted">{product.sku} · {product.kind} · {product.status} · {product.price_minor} {product.currency}</p></div><Button size="sm" variant="secondary" onClick={() => edit(product)} disabled={busy}>{en ? 'Edit' : 'Изменить'}</Button></div>)}
+    {!products.length && !busy && <p className="text-sm text-text-secondary">{en ? 'No SKUs yet.' : 'Пока нет SKU.'}</p>}
     {notice && <p role="status" className="text-sm text-text-secondary">{notice}</p>}
   </GlassPanel>
 }
@@ -727,6 +800,7 @@ export function CommunityPanel({ onBack }: CommunityPanelProps) {
             <StarRouteDraftEditor language={language} isEditor={Boolean(user?.isEditor)} />
             <StarRouteReviewQueue language={language} isEditor={Boolean(user?.isEditor)} />
             <AffiliateOfferEditor language={language} isEditor={Boolean(user?.isEditor)} />
+            <CatalogEditor language={language} isEditor={Boolean(user?.isEditor)} />
           </TabsContent>
 
           {/* Лидерборд */}
