@@ -35,6 +35,21 @@ function articleText(body: Record<string, unknown>): string[] {
     .map((value) => value.trim())
 }
 
+const publicWikiCopy = {
+  en: {
+    loading: 'Loading article…', missing: 'This article is unpublished or no longer available.', unavailable: 'Could not load the article.',
+    fallback: 'This article is currently available in Russian.', published: 'published edition', contents: 'Article content',
+    sources: 'Sources and rights', license: 'Article licence:', source: 'source', rightsPending: 'rights pending',
+    sourceTerms: 'Source terms of use', version: 'Version', publishedOn: 'published', fallbackDescription: (title: string) => `Published Crista Wiki article: ${title}.`,
+  },
+  ru: {
+    loading: 'Загружаю статью…', missing: 'Эта статья не опубликована или больше недоступна.', unavailable: 'Не удалось загрузить статью.',
+    fallback: 'Эта статья сейчас доступна на русском языке.', published: 'опубликованная версия', contents: 'Содержание статьи',
+    sources: 'Источники и права', license: 'Лицензия статьи:', source: 'источник', rightsPending: 'права ожидают проверки',
+    sourceTerms: 'Условия использования источника', version: 'Версия', publishedOn: 'опубликовано', fallbackDescription: (title: string) => `Опубликованная статья Crista Wiki: ${title}.`,
+  },
+} as const
+
 export function PublicWikiArticle({ slug }: { slug: string }) {
   const [searchParams] = useSearchParams()
   const [article, setArticle] = useState<WikiPublishedArticle | null>(null)
@@ -44,6 +59,7 @@ export function PublicWikiArticle({ slug }: { slug: string }) {
   const language = requestedLanguage === 'en' || requestedLanguage === 'ru'
     ? requestedLanguage
     : (typeof navigator !== 'undefined' && navigator.language.startsWith('en') ? 'en' : 'ru')
+  const copy = publicWikiCopy[language]
   const paragraphs = useMemo(() => article ? articleText(article.body) : [], [article])
 
   useEffect(() => {
@@ -58,17 +74,17 @@ export function PublicWikiArticle({ slug }: { slug: string }) {
         const status = reason instanceof ApiError
           ? reason.status
           : (typeof reason === 'object' && reason !== null && 'status' in reason ? reason.status : undefined)
-        setError(status === 404 ? 'Эта статья не опубликована или больше недоступна.' : 'Не удалось загрузить статью.')
+        setError(status === 404 ? copy.missing : copy.unavailable)
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [language, slug])
+  }, [copy, language, slug])
 
   useEffect(() => {
     if (!article) return
     const previousTitle = document.title
     const title = `${article.title} — Crista Wiki`
-    const description = (paragraphs[0] || `Опубликованная статья Crista Wiki: ${article.title}.`).replace(/\s+/g, ' ').slice(0, 240)
+    const description = (paragraphs[0] || copy.fallbackDescription(article.title)).replace(/\s+/g, ' ').slice(0, 240)
     const canonicalUrl = `${window.location.origin}${window.location.pathname}`
     document.title = title
     const restore = [
@@ -86,39 +102,40 @@ export function PublicWikiArticle({ slug }: { slug: string }) {
       document.title = previousTitle
       restore.reverse().forEach((restoreAttribute) => restoreAttribute())
     }
-  }, [article, paragraphs])
+  }, [article, copy, paragraphs, language])
 
   useEffect(() => {
     if (!error) return
     return setHeadAttribute('meta[name="robots"]', 'meta', 'content', 'noindex, nofollow', { name: 'robots' })
   }, [error])
 
-  if (loading) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary">Загружаю статью…</main>
-  if (error || !article) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary"><h1 className="text-xl font-semibold text-text">Crista Wiki</h1><p className="mt-3">{error || 'Страница недоступна.'}</p></main>
+  if (loading) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary">{copy.loading}</main>
+  if (error || !article) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary"><h1 className="text-xl font-semibold text-text">Crista Wiki</h1><p className="mt-3">{error || copy.unavailable}</p></main>
 
   return <main className="min-h-screen bg-background px-4 py-8 text-text sm:px-8">
     <article className="mx-auto max-w-3xl space-y-7">
       <header>
-        <p className="flex items-center gap-2 text-sm text-text-secondary"><Globe className="h-4 w-4" />Crista Wiki · опубликованная версия</p>
+        <p className="flex items-center gap-2 text-sm text-text-secondary"><Globe className="h-4 w-4" />Crista Wiki · {copy.published}</p>
         <h1 className="mt-2 font-display text-3xl font-semibold sm:text-5xl">{article.title}</h1>
         {article.content_language === 'en' && <p className="mt-3 text-sm text-text-secondary">English edition</p>}
+        {article.content_language && article.content_language !== language && <p className="mt-3 text-sm text-text-secondary">{copy.fallback}</p>}
       </header>
 
-      {paragraphs.length > 0 && <section className="space-y-4" aria-label="Содержание статьи">
+      {paragraphs.length > 0 && <section className="space-y-4" aria-label={copy.contents}>
         {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`} className="max-w-[68ch] font-sans leading-7 text-text-secondary">{paragraph}</p>)}
       </section>}
 
-      <section aria-label="Источники статьи" className="rounded-2xl border border-border bg-surface-light p-4">
-        <h2 className="font-semibold">Источники и права</h2>
-        <p className="mt-1 text-xs text-text-muted">Лицензия статьи: {article.license}</p>
+      <section aria-label={copy.sources} className="rounded-2xl border border-border bg-surface-light p-4">
+        <h2 className="font-semibold">{copy.sources}</h2>
+        <p className="mt-1 text-xs text-text-muted">{copy.license} {article.license}</p>
         <ul className="mt-4 space-y-3">{article.sources.map((source, index) => <li key={`${source.url}-${index}`}>
           <a href={source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"><BookOpenCheck className="h-4 w-4" />{source.label}</a>
-          {(source.source_kind || source.rights_basis) && <p className="mt-1 text-xs text-text-muted">{source.source_kind || 'source'} · {source.rights_basis || 'rights pending'}</p>}
-          {source.rights_url && <a href={source.rights_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">Условия использования источника</a>}
+          {(source.source_kind || source.rights_basis) && <p className="mt-1 text-xs text-text-muted">{source.source_kind || copy.source} · {source.rights_basis || copy.rightsPending}</p>}
+          {source.rights_url && <a href={source.rights_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">{copy.sourceTerms}</a>}
         </li>)}</ul>
       </section>
 
-      <footer className="border-t border-border pt-4 text-xs text-text-muted">Версия {article.version_id}{article.published_at ? ` · опубликовано ${new Date(article.published_at).toLocaleDateString('ru-RU')}` : ''}</footer>
+      <footer className="border-t border-border pt-4 text-xs text-text-muted">{copy.version} {article.version_id}{article.published_at ? ` · ${copy.publishedOn} ${new Date(article.published_at).toLocaleDateString(language === 'en' ? 'en-GB' : 'ru-RU')}` : ''}</footer>
     </article>
   </main>
 }
