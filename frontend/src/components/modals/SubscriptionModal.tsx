@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { useApp } from '@/context/AppContext'
 import { subscriptionPlans } from '@/mocks/subscriptions'
 import { PlanDetails, SubscriptionPlan } from '@/types'
+import { isMockMode } from '@/api/chatApi'
 import { cn } from '@/lib/utils'
 
 function PlanCard({ plan, isSelected, onSelect, isAnnual }: {
@@ -118,18 +119,38 @@ export function SubscriptionModal() {
   const { activeModal, closeModal, openModal, selectedPlan, setSelectedPlan } = useApp()
   const [isAnnual, setIsAnnual] = useState(false)
   const isOpen = activeModal === 'subscription'
+  const demoMode = isMockMode()
 
   // Pre-select "pro" plan if nothing is selected
   useEffect(() => {
-    if (isOpen && !selectedPlan) {
+    if (isOpen && demoMode && !selectedPlan) {
       setSelectedPlan('pro')
     }
-  }, [isOpen, selectedPlan, setSelectedPlan])
+  }, [demoMode, isOpen, selectedPlan, setSelectedPlan])
 
   const handleContinue = () => {
     if (selectedPlan) {
       openModal('payment')
     }
+  }
+
+  if (!demoMode) {
+    return (
+      <Dialog open={isOpen} onOpenChange={closeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Подписка</DialogTitle>
+            <DialogDescription>
+              Онлайн-оплата пока не подключена.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="rounded-lg border border-hairline bg-surface-light p-4 text-sm leading-relaxed text-text-secondary">
+            Crista не принимает и не сохраняет платёжные данные. Тарифы и доступ появятся после подключения сертифицированного hosted checkout.
+          </p>
+          <Button className="w-full" onClick={closeModal}>Понятно</Button>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
