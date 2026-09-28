@@ -40,13 +40,13 @@ const publicWikiCopy = {
     loading: 'Loading article…', missing: 'This article is unpublished or no longer available.', unavailable: 'Could not load the article.',
     fallback: 'This article is currently available in Russian.', published: 'published edition', contents: 'Article content',
     sources: 'Sources and rights', license: 'Article licence:', source: 'source', rightsPending: 'rights pending',
-    sourceTerms: 'Source terms of use', version: 'Version', publishedOn: 'published', fallbackDescription: (title: string) => `Published Crista Wiki article: ${title}.`,
+    rightsLink: 'Rights basis link', version: 'Version', publishedOn: 'published', fallbackDescription: (title: string) => `Published Crista Wiki article: ${title}.`,
   },
   ru: {
     loading: 'Загружаю статью…', missing: 'Эта статья не опубликована или больше недоступна.', unavailable: 'Не удалось загрузить статью.',
     fallback: 'Эта статья сейчас доступна на русском языке.', published: 'опубликованная версия', contents: 'Содержание статьи',
     sources: 'Источники и права', license: 'Лицензия статьи:', source: 'источник', rightsPending: 'права ожидают проверки',
-    sourceTerms: 'Условия использования источника', version: 'Версия', publishedOn: 'опубликовано', fallbackDescription: (title: string) => `Опубликованная статья Crista Wiki: ${title}.`,
+    rightsLink: 'Ссылка на основание прав', version: 'Версия', publishedOn: 'опубликовано', fallbackDescription: (title: string) => `Опубликованная статья Crista Wiki: ${title}.`,
   },
 } as const
 
@@ -131,7 +131,7 @@ export function PublicWikiArticle({ slug }: { slug: string }) {
         <ul className="mt-4 space-y-3">{article.sources.map((source, index) => <li key={`${source.url}-${index}`}>
           <a href={source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"><BookOpenCheck className="h-4 w-4" />{source.label}</a>
           {(source.source_kind || source.rights_basis) && <p className="mt-1 text-xs text-text-muted">{source.source_kind || copy.source} · {source.rights_basis || copy.rightsPending}</p>}
-          {source.rights_url && <a href={source.rights_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">{copy.sourceTerms}</a>}
+          {source.rights_url && <a href={source.rights_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline">{copy.rightsLink}</a>}
         </li>)}</ul>
       </section>
 
