@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
 import { useApp } from '@/context/AppContext'
 import { isLoggedIn } from '@/api/authApi'
+import { createAffiliateOffer, getEditorAffiliateOffers, updateAffiliateOffer, type AffiliateOffer } from '@/api/commerceApi'
 import { addStarRouteSegment, createStarRouteCandidate, getPublishedStarRoutes, getStarRouteReviewQueue, publishStarRoute, registerStarRouteTranscript, type PublishedStarRoute, type ReviewStarRoute, type StarRoutePoiInput } from '@/api/starRouteApi'
 import {
   acceptFriendInvite,
@@ -143,6 +144,79 @@ function StarRouteDraftEditor({ language, isEditor }: { language: 'ru' | 'en'; i
       <div className="grid gap-2 sm:grid-cols-2"><input className={input} value={routeTitle} onChange={(e) => setRouteTitle(e.target.value)} placeholder={en ? 'Route title' : 'Название маршрута'} /><input className={input} value={destination} onChange={(e) => setDestination(e.target.value)} placeholder={en ? 'Destination' : 'Направление'} /></div>
       {pois.map((poi, index) => <div key={poi.key} className="grid gap-2 rounded border border-hairline p-2 sm:grid-cols-3"><select className={input} value={poi.segment_id} onChange={(e) => updatePoi(poi.key, 'segment_id', e.target.value)}><option value="">{en ? 'Segment' : 'Сегмент'}</option>{segments.map((item) => <option key={item.id} value={item.id}>{item.extracted_place_name}</option>)}</select><input className={input} value={poi.name} onChange={(e) => updatePoi(poi.key, 'name', e.target.value)} placeholder={en ? 'POI name' : 'Название POI'} /><input className={input} value={poi.source_url} onChange={(e) => updatePoi(poi.key, 'source_url', e.target.value)} placeholder="POI https://…" /><input className={input} value={poi.latitude} onChange={(e) => updatePoi(poi.key, 'latitude', e.target.value)} placeholder="Latitude" /><input className={input} value={poi.longitude} onChange={(e) => updatePoi(poi.key, 'longitude', e.target.value)} placeholder="Longitude" /><button type="button" className="text-xs text-error" onClick={() => setPois((items) => items.length > 2 ? items.filter((item) => item.key !== poi.key) : items)}>{en ? 'Remove' : 'Удалить'} {index + 1}</button></div>)}
       <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPois((items) => [...items, emptyPoi()])}>{en ? 'Add POI' : 'Добавить POI'}</Button><Button size="sm" disabled={busy || !routeTitle || !destination || pois.some((poi) => !poi.segment_id || !poi.name || !poi.source_url || !poi.latitude.trim() || !poi.longitude.trim() || !Number.isFinite(Number(poi.latitude)) || !Number.isFinite(Number(poi.longitude)) || Number(poi.latitude) < -90 || Number(poi.latitude) > 90 || Number(poi.longitude) < -180 || Number(poi.longitude) > 180)} onClick={() => void create()}>{en ? 'Calculate candidate' : 'Рассчитать кандидата'}</Button></div></>}
+    {notice && <p role="status" className="text-sm text-text-secondary">{notice}</p>}
+  </GlassPanel>
+}
+
+type AffiliateOfferDraft = Omit<AffiliateOffer, 'id' | 'updated_at'>
+const emptyAffiliateOffer = (): AffiliateOfferDraft => ({ partner: '', title: '', destination_url: '', terms_url: '', status: 'draft' })
+
+function AffiliateOfferEditor({ language, isEditor }: { language: 'ru' | 'en'; isEditor: boolean }) {
+  const en = language === 'en'
+  const [offers, setOffers] = useState<AffiliateOffer[]>([])
+  const [draft, setDraft] = useState<AffiliateOfferDraft>(emptyAffiliateOffer)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = useCallback(async () => {
+    if (!isEditor) return
+    setBusy(true)
+    try {
+      setOffers(await getEditorAffiliateOffers())
+      setNotice(null)
+    } catch {
+      setNotice(en ? 'Could not load affiliate offers.' : 'Не удалось загрузить партнёрские офферы.')
+    } finally {
+      setBusy(false)
+    }
+  }, [en, isEditor])
+
+  useEffect(() => { void refresh() }, [refresh])
+  if (!isEditor) return null
+
+  const updateDraft = <Key extends keyof AffiliateOfferDraft>(field: Key, value: AffiliateOfferDraft[Key]) => setDraft((current) => ({ ...current, [field]: value }))
+  const edit = (offer: AffiliateOffer) => {
+    setEditingId(offer.id)
+    setDraft({ partner: offer.partner, title: offer.title, destination_url: offer.destination_url, terms_url: offer.terms_url, status: offer.status })
+    setNotice(null)
+  }
+  const cancel = () => { setEditingId(null); setDraft(emptyAffiliateOffer()); setNotice(null) }
+  const save = async (event: FormEvent) => {
+    event.preventDefault()
+    setBusy(true)
+    setNotice(null)
+    try {
+      const saved = editingId
+        ? await updateAffiliateOffer(editingId, draft)
+        : await createAffiliateOffer(draft)
+      setOffers((items) => editingId ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items])
+      setNotice(editingId ? (en ? 'Offer updated.' : 'Оффер обновлён.') : (en ? 'Draft created.' : 'Черновик создан.'))
+      setEditingId(null)
+      setDraft(emptyAffiliateOffer())
+    } catch {
+      setNotice(en ? 'Could not save the offer. Check the contract URLs.' : 'Не удалось сохранить оффер. Проверьте ссылки договора и условий.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const input = 'h-9 rounded-md border border-hairline bg-panel px-2 text-sm text-text'
+  return <GlassPanel className="mt-6 space-y-4 p-4">
+    <div>
+      <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{en ? 'Affiliate offers · editorial' : 'Партнёрские офферы · редактор'}</p>
+      <p className="mt-1 text-xs text-text-secondary">{en ? 'New offers start as drafts. Switch to active only after contract and terms are verified.' : 'Новые офферы создаются черновиками. Переведите в active только после проверки договора и условий.'}</p>
+    </div>
+    <form className="grid gap-2 sm:grid-cols-2" onSubmit={(event) => void save(event)}>
+      <input className={input} value={draft.partner} onChange={(event) => updateDraft('partner', event.target.value)} placeholder={en ? 'Partner' : 'Партнёр'} required />
+      <input className={input} value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder={en ? 'Offer title' : 'Название оффера'} required />
+      <input className={input} value={draft.destination_url} onChange={(event) => updateDraft('destination_url', event.target.value)} placeholder={en ? 'Destination https://…' : 'Целевая ссылка https://…'} required />
+      <input className={input} value={draft.terms_url} onChange={(event) => updateDraft('terms_url', event.target.value)} placeholder={en ? 'Terms https://…' : 'Условия https://…'} required />
+      {editingId && <select className={input} value={draft.status} onChange={(event) => updateDraft('status', event.target.value as AffiliateOfferDraft['status'])}><option value="draft">draft</option><option value="active">active</option><option value="archived">archived</option></select>}
+      <div className="flex gap-2"><Button size="sm" type="submit" disabled={busy}>{busy ? (en ? 'Saving…' : 'Сохраняем…') : editingId ? (en ? 'Save offer' : 'Сохранить оффер') : (en ? 'Create draft' : 'Создать черновик')}</Button>{editingId && <Button size="sm" type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel' : 'Отмена'}</Button>}</div>
+    </form>
+    {offers.map((offer) => <div key={offer.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-3"><div className="min-w-0"><p className="font-semibold text-text">{offer.title}</p><p className="truncate text-xs text-text-muted">{offer.partner} · {offer.status}</p><a className="text-xs text-primary hover:underline" href={offer.terms_url} target="_blank" rel="noreferrer">{en ? 'Terms' : 'Условия'}</a></div><Button size="sm" variant="secondary" onClick={() => edit(offer)} disabled={busy}>{en ? 'Edit' : 'Изменить'}</Button></div>)}
+    {!offers.length && !busy && <p className="text-sm text-text-secondary">{en ? 'No offers yet.' : 'Пока нет офферов.'}</p>}
     {notice && <p role="status" className="text-sm text-text-secondary">{notice}</p>}
   </GlassPanel>
 }
@@ -652,6 +726,7 @@ export function CommunityPanel({ onBack }: CommunityPanelProps) {
             <StarRoutesSection language={language} />
             <StarRouteDraftEditor language={language} isEditor={Boolean(user?.isEditor)} />
             <StarRouteReviewQueue language={language} isEditor={Boolean(user?.isEditor)} />
+            <AffiliateOfferEditor language={language} isEditor={Boolean(user?.isEditor)} />
           </TabsContent>
 
           {/* Лидерборд */}
