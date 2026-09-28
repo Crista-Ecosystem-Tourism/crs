@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  ArrowLeft, Globe2, PiggyBank, Trophy,
+  ArrowLeft, Bell, Globe2, PiggyBank, Trophy,
   TrendingDown, MapPin, ChevronRight, BookOpenCheck, RotateCcw,
 } from 'lucide-react'
 import { GlassPanel, Chip, DisplayTitle, IconButton } from '@/components/ui/glass'
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { getGameCopy } from '@/lib/gameCopy'
 import { getGamePassport, type GamePassport } from '@/api/gameApi'
 import { fetchSuitcaseWorkspace, mapGoalFromApi, mapTripFromApi } from '@/api/suitcaseApi'
+import { listPriceWatchAlerts, type PriceWatchAlert } from '@/api/priceApi'
 import type { SuitcaseGoal, SuitcaseTrip } from '@/types/suitcase'
 
 type GamePanelProps = {
@@ -81,6 +82,10 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
   const [suitcaseError, setSuitcaseError] = useState<string | null>(null)
   const [suitcaseLoading, setSuitcaseLoading] = useState(false)
   const [suitcaseRefreshVersion, setSuitcaseRefreshVersion] = useState(0)
+  const [priceAlerts, setPriceAlerts] = useState<PriceWatchAlert[]>([])
+  const [priceAlertsLoading, setPriceAlertsLoading] = useState(false)
+  const [priceAlertsError, setPriceAlertsError] = useState(false)
+  const [priceAlertsRefreshVersion, setPriceAlertsRefreshVersion] = useState(0)
   const { setMainView, language } = useApp()
   const copy = getGameCopy(language)
 
@@ -132,6 +137,27 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
       .finally(() => { if (current) setSuitcaseLoading(false) })
     return () => { current = false }
   }, [signedIn, suitcaseRefreshVersion])
+
+  useEffect(() => {
+    if (!signedIn) {
+      setPriceAlerts([])
+      setPriceAlertsError(false)
+      setPriceAlertsLoading(false)
+      return
+    }
+    let current = true
+    setPriceAlertsLoading(true)
+    setPriceAlertsError(false)
+    listPriceWatchAlerts()
+      .then((alerts) => { if (current) setPriceAlerts(alerts) })
+      .catch(() => {
+        if (!current) return
+        setPriceAlerts([])
+        setPriceAlertsError(true)
+      })
+      .finally(() => { if (current) setPriceAlertsLoading(false) })
+    return () => { current = false }
+  }, [signedIn, priceAlertsRefreshVersion])
 
   const activeSuitcaseTrips = suitcase?.trips.filter((trip) => !trip.isArchived) ?? []
 
@@ -219,6 +245,45 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
             </button>
           </div>
         </GlassPanel>}
+        {signedIn && <GlassPanel variant="flat" className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-sans text-xs uppercase tracking-wide text-text-muted">
+                {language === 'en' ? 'Price watch' : 'Отслеживание цен'}
+              </p>
+              <p className="mt-1 font-display text-lg font-semibold text-text">
+                {language === 'en' ? 'Offers at your target price' : 'Предложения по вашей цене'}
+              </p>
+            </div>
+            <Bell className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          </div>
+          {priceAlertsLoading && <p role="status" className="mt-3 font-sans text-sm text-text-secondary">
+            {language === 'en' ? 'Checking price alerts…' : 'Проверяем уведомления о ценах…'}
+          </p>}
+          {priceAlertsError && <div role="status" className="mt-3 flex flex-wrap items-center gap-2 font-sans text-sm text-text-secondary">
+            <span>{language === 'en' ? 'Price alerts are temporarily unavailable.' : 'Уведомления о ценах временно недоступны.'}</span>
+            <button type="button" onClick={() => setPriceAlertsRefreshVersion((version) => version + 1)} className="text-primary underline underline-offset-2">
+              {language === 'en' ? 'Retry' : 'Повторить'}
+            </button>
+          </div>}
+          {!priceAlertsLoading && !priceAlertsError && (priceAlerts.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {priceAlerts.slice(0, 3).map((alert) => (
+                <li key={alert.id} className="rounded-md bg-panel-2 px-3 py-2 font-sans text-sm text-text-secondary">
+                  <span className="font-medium text-text">{alert.subject_key}</span>
+                  <span className="mx-1.5 text-text-muted">·</span>
+                  <span className="font-semibold tabular text-text">{formatPriceAmount(alert.amount_minor, alert.currency, language)}</span>
+                  <span className="mx-1.5 text-text-muted">·</span>
+                  <span>{formatAlertDate(alert.created_at, language)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 font-sans text-sm text-text-secondary">
+              {language === 'en' ? 'New offers will appear here when a tracked price reaches your target.' : 'Новые предложения появятся здесь, когда отслеживаемая цена достигнет вашей цели.'}
+            </p>
+          ))}
+        </GlassPanel>}
         <GlassPanel variant="flat" className="p-4 sm:p-5">
           <p className="font-sans text-sm leading-6 text-text-secondary">
             {copy.liveModeNote}
@@ -227,6 +292,22 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
       </div>
     </div>
   )
+}
+
+function formatPriceAmount(amountMinor: number, currency: string, language: 'ru' | 'en') {
+  return new Intl.NumberFormat(language === 'en' ? 'en-US' : 'ru-RU', {
+    style: 'currency',
+    currency,
+  }).format(amountMinor / 100)
+}
+
+function formatAlertDate(createdAt: string, language: 'ru' | 'en') {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return createdAt
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'ru-RU', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date)
 }
 
 function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string | null }) {
