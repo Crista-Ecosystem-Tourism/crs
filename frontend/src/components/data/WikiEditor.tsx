@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { BlockEditor } from './BlockEditor'
 import type { ArticleBlock } from '@/types/wiki'
 import { useApp } from '@/context/AppContext'
+import type { WikiRightsBasis, WikiSourceKind } from '@/api/wikiApi'
 
 export interface WikiPractical {
   label: string
@@ -13,7 +14,14 @@ export interface WikiPractical {
 
 export interface WikiEditorSubmission {
   body: Record<string, unknown>
-  sources: { label: string; url: string }[]
+  sources: {
+    label: string
+    url: string
+    source_kind: WikiSourceKind
+    rights_basis: WikiRightsBasis
+    rights_url: string
+    checked_at: string
+  }[]
   license: string
 }
 
@@ -99,6 +107,9 @@ export function WikiEditor({
   const [blocks, setBlocks] = useState<ArticleBlock[]>([])
   const [sourceLabel, setSourceLabel] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
+  const [sourceKind, setSourceKind] = useState<WikiSourceKind>('official')
+  const [rightsBasis, setRightsBasis] = useState<WikiRightsBasis>('public_facts')
+  const [rightsUrl, setRightsUrl] = useState('')
   const [license, setLicense] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +130,7 @@ export function WikiEditor({
     setPractical((prev) => prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
 
   const handleSave = async () => {
-    if (saving || !sourceLabel.trim() || !sourceUrl.trim() || !license.trim()) return
+    if (saving || !sourceLabel.trim() || !sourceUrl.trim() || !rightsUrl.trim() || !license.trim()) return
     setSaving(true)
     setError(null)
     try {
@@ -128,7 +139,14 @@ export function WikiEditor({
           summary: summary.trim(), history: history.trim(), cuisine: cuisine.trim(), traditions: traditions.trim(),
           practical: practical.filter((p) => p.label.trim() && p.value.trim()), blocks,
         },
-        sources: [{ label: sourceLabel.trim(), url: sourceUrl.trim() }],
+        sources: [{
+          label: sourceLabel.trim(),
+          url: sourceUrl.trim(),
+          source_kind: sourceKind,
+          rights_basis: rightsBasis,
+          rights_url: rightsUrl.trim(),
+          checked_at: new Date().toISOString(),
+        }],
         license: license.trim(),
       })
     } catch {
@@ -267,12 +285,15 @@ export function WikiEditor({
           <p className="font-sans text-sm font-semibold text-text">{en ? 'Source and license' : 'Источник и лицензия'}</p>
           <label className="font-sans text-xs text-text-secondary">{en ? 'Source name' : 'Название источника'}<input value={sourceLabel} onChange={(event) => setSourceLabel(event.target.value)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
           <label className="font-sans text-xs text-text-secondary">{en ? 'Source URL' : 'Ссылка на источник'}<input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'Source type' : 'Тип источника'}<select value={sourceKind} onChange={(event) => setSourceKind(event.target.value as WikiSourceKind)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text"><option value="official">{en ? 'Official source' : 'Официальный источник'}</option><option value="institutional">{en ? 'Institution' : 'Институция'}</option><option value="reference">{en ? 'Reference source' : 'Справочный источник'}</option><option value="licensed_media">{en ? 'Licensed media' : 'Лицензированные медиа'}</option><option value="own_work">{en ? 'Own work' : 'Собственная работа'}</option></select></label>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'Rights basis' : 'Основание прав'}<select value={rightsBasis} onChange={(event) => setRightsBasis(event.target.value as WikiRightsBasis)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text"><option value="public_facts">{en ? 'Public facts' : 'Публичные факты'}</option><option value="cc_by">CC BY</option><option value="cc_by_sa">CC BY-SA</option><option value="public_domain">{en ? 'Public domain' : 'Общественное достояние'}</option><option value="licensed">{en ? 'License agreement' : 'Лицензионный договор'}</option><option value="permission">{en ? 'Written permission' : 'Письменное разрешение'}</option><option value="own_work">{en ? 'Own work' : 'Собственная работа'}</option></select></label>
+          <label className="font-sans text-xs text-text-secondary">{en ? 'Rights or license URL' : 'Ссылка на права или лицензию'}<input value={rightsUrl} onChange={(event) => setRightsUrl(event.target.value)} type="url" className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
           <label className="font-sans text-xs text-text-secondary">{en ? 'License' : 'Лицензия'}<input value={license} onChange={(event) => setLicense(event.target.value)} className="mt-1 block h-11 w-full rounded-md border border-hairline bg-panel px-3 text-sm text-text" /></label>
         </div>
 
         {/* Действия */}
         <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-5">
-          <Button onClick={() => void handleSave()} disabled={!changed || tooLong || empty || !sourceLabel.trim() || !sourceUrl.trim() || !license.trim() || saving}>
+          <Button onClick={() => void handleSave()} disabled={!changed || tooLong || empty || !sourceLabel.trim() || !sourceUrl.trim() || !rightsUrl.trim() || !license.trim() || saving}>
             <Save />
             {saving ? (en ? 'Submitting…' : 'Отправляем…') : (en ? 'Submit for review' : 'Отправить на review')}
           </Button>

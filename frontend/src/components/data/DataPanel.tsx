@@ -187,7 +187,20 @@ function MoscowDraftForm({ article }: { article: WikiPublishedArticle }) {
     setSaving(true)
     setMessage(null)
     try {
-      const draft = await createWikiDraft({ slug: article.slug, title: article.title, body: { summary: summary.trim() }, sources: [{ label: sourceLabel.trim(), url: sourceUrl.trim() }], license: license.trim() })
+      const draft = await createWikiDraft({
+        slug: article.slug,
+        title: article.title,
+        body: { summary: summary.trim() },
+        sources: [{
+          label: sourceLabel.trim(),
+          url: sourceUrl.trim(),
+          source_kind: 'reference',
+          rights_basis: 'public_facts',
+          rights_url: sourceUrl.trim(),
+          checked_at: new Date().toISOString(),
+        }],
+        license: license.trim(),
+      })
       await submitWikiDraft(draft.id)
       setMessage(language === 'en' ? 'Your edit was submitted to the server review queue.' : 'Правка отправлена в серверную очередь review.')
       setOpen(false)
@@ -317,6 +330,9 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
           </p>
           <p className="mt-1 font-sans text-xs text-text-muted">
             {en ? 'Published Wiki:' : 'Опубликованная Wiki:'} {city.wiki_published ? city.wiki_license : (en ? 'missing' : 'нет')}
+          </p>
+          <p className="mt-1 font-sans text-xs text-text-muted">
+            {en ? 'Source provenance:' : 'Провенанс источников:'} {city.wiki_provenance_complete ? (en ? 'complete' : 'полный') : (en ? 'needs review' : 'нужна проверка')}
           </p>
         </div>
         <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>

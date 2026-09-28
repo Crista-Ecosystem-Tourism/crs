@@ -3,7 +3,17 @@ import { getAuthHeaders } from './authApi'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-export type WikiSource = { label: string; url: string }
+export type WikiSourceKind = 'official' | 'institutional' | 'reference' | 'licensed_media' | 'own_work'
+export type WikiRightsBasis = 'public_facts' | 'cc_by' | 'cc_by_sa' | 'public_domain' | 'licensed' | 'permission' | 'own_work'
+export type WikiSource = {
+  label: string
+  url: string
+  source_kind?: WikiSourceKind
+  rights_basis?: WikiRightsBasis
+  rights_url?: string
+  checked_at?: string
+}
+export type WikiProvenanceSource = WikiSource & Required<Pick<WikiSource, 'source_kind' | 'rights_basis' | 'rights_url' | 'checked_at'>>
 
 export type WikiPublishedArticle = {
   version_id: string
@@ -68,7 +78,7 @@ export async function createWikiDraft(input: {
   slug: string
   title: string
   body: Record<string, unknown>
-  sources: WikiSource[]
+  sources: WikiProvenanceSource[]
   license: string
 }): Promise<WikiDraft> {
   return parse<WikiDraft>(await fetch(`${API_BASE_URL}/wiki/drafts`, {

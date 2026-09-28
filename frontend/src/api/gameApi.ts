@@ -34,6 +34,7 @@ export type GameCityReadiness = {
   sourced_quest_count: number
   wiki_published: boolean
   wiki_license: string | null
+  wiki_provenance_complete: boolean
   status: 'ready' | 'draft'
 }
 
