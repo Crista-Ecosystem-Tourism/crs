@@ -15,6 +15,7 @@ import { MoscowPath } from './MoscowPath'
 import { MoscowBoss } from './MoscowBoss'
 import { MoscowSandbox } from './MoscowSandbox'
 import { CityPilot } from './CityPilot'
+import { PriceBudgetPlanner } from './PriceBudgetPlanner'
 import { useGameProgress } from '@/hooks/useGameProgress'
 import { useApp } from '@/context/AppContext'
 import { ApiError, isMockMode } from '@/api/chatApi'
@@ -372,6 +373,7 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
             </p>
           ))}
         </GlassPanel>}
+        {signedIn && <PriceBudgetPlanner />}
         <GlassPanel variant="flat" className="p-4 sm:p-5">
           <p className="font-sans text-sm leading-6 text-text-secondary">
             {copy.liveModeNote}

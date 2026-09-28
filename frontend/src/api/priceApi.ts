@@ -19,6 +19,19 @@ export type PriceWatch = {
   active: boolean
 }
 
+export type PriceBudgetPlan = {
+  status: 'feasible' | 'compromise' | 'infeasible' | 'unknown'
+  budget_minor: number
+  currency: string
+  total_minor?: number
+  remaining_minor?: number
+  missing?: string[]
+  currency_mismatch?: string[]
+  included?: string[]
+  excluded?: string[]
+  unavailable?: string[]
+}
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
@@ -52,5 +65,18 @@ export async function unsubscribePriceWatch(watchId: string): Promise<void> {
   await parse<void>(await fetch(`${API_BASE_URL}/prices/watches/${encodeURIComponent(watchId)}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
+  }))
+}
+
+export async function planPriceBudget(payload: {
+  budget_minor: number
+  currency: string
+  required_subject_keys: string[]
+  optional_subject_keys: string[]
+}): Promise<PriceBudgetPlan> {
+  return parse<PriceBudgetPlan>(await fetch(`${API_BASE_URL}/prices/budget-plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(payload),
   }))
 }
