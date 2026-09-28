@@ -7,6 +7,7 @@ import { isMockMode, checkHealth, createSession, sendMessage as apiSendMessage, 
 import { mapMessageOutToChatMessage, mapHistoryToMessages, computeMapCenter, computeMapZoom } from '@/api/mappers'
 import { ApiError } from '@/api/chatApi'
 import { login as apiLogin, register as apiRegister, getMe, getPreferences, savePreferences, logout as apiLogout, getToken } from '@/api/authApi'
+import { fetchCommerceEntitlements } from '@/api/commerceApi'
 import { buildGraph } from '@/api/graphApi'
 import {
   savePlaceRatings as apiSavePlaceRatings,
@@ -351,6 +352,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const ratingsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingRatingsRef = useRef<Record<string, PlaceRatingEntry> | null>(null)
 
+  const refreshCommerceEntitlements = useCallback(async (userId: string) => {
+    try {
+      const { entitlements } = await fetchCommerceEntitlements()
+      const hasCristaPass = entitlements.some((entitlement) => entitlement.key === 'crista_pass')
+      setUser((currentUser) => {
+        if (!currentUser || currentUser.id !== userId) return currentUser
+        return {
+          ...currentUser,
+          authState: hasCristaPass ? 'subscribed' : 'registered',
+          subscription: hasCristaPass ? 'premium' : undefined,
+        }
+      })
+      setAuthState(hasCristaPass ? 'subscribed' : 'registered')
+    } catch {
+      // Commerce can be temporarily unavailable while migrations are rolled out.
+    }
+  }, [])
+
   const refreshSavedRoutes = useCallback(async () => {
     if (isMockMode()) {
       setSavedRoutesLoading(false)
@@ -509,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             authState: 'registered',
           })
           setAuthState('registered')
+          await refreshCommerceEntitlements(authUser.id)
           await refreshSavedRoutes().catch(() => {})
 
           try {
@@ -542,7 +562,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     init()
-  }, [preloadSessionHistory, refreshSavedRoutes])
+  }, [preloadSessionHistory, refreshCommerceEntitlements, refreshSavedRoutes])
 
   // Flush pending ratings on page unload
   useEffect(() => {
@@ -626,6 +646,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         authState: 'registered',
       })
       setAuthState('registered')
+      await refreshCommerceEntitlements(authUser.id)
       setActiveModal(null)
       if (sessionRef.current?.sessionId && sessionRef.current?.sessionSecret) {
         try {
@@ -640,7 +661,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setAuthLoading(false)
     }
-  }, [loadUserSessions])
+  }, [loadUserSessions, refreshCommerceEntitlements])
 
   const registerWithEmail = useCallback(async (email: string, password: string, name: string) => {
     setAuthLoading(true)
@@ -656,6 +677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         authState: 'registered',
       })
       setAuthState('registered')
+      await refreshCommerceEntitlements(authUser.id)
       setActiveModal(null)
       if (sessionRef.current?.sessionId && sessionRef.current?.sessionSecret) {
         try {
@@ -670,7 +692,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setAuthLoading(false)
     }
-  }, [language, loadUserSessions, persistPreferences, theme])
+  }, [language, loadUserSessions, persistPreferences, refreshCommerceEntitlements, theme])
 
   const logout = useCallback(() => {
     apiLogout()
@@ -691,6 +713,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const subscribe = useCallback((plan: SubscriptionPlan) => {
+    if (!isMockMode()) return
     if (user) {
       setUser({ ...user, authState: 'subscribed', subscription: plan })
       setAuthState('subscribed')
