@@ -24,6 +24,17 @@ export type GamePassport = {
   routes: Array<{ id: string; name: string; destination: string; updated_at: string | null }>
 }
 
+export type GameCityReadiness = {
+  id: string
+  name: string
+  tier: number
+  published: boolean
+  required_quest_count: number
+  published_quest_count: number
+  sourced_quest_count: number
+  status: 'ready' | 'draft'
+}
+
 export type OnboardingContent = {
   id: string
   country: { id: string; name: string; city: string }
@@ -287,6 +298,12 @@ export async function getOnboarding(language: 'ru' | 'en' = 'ru'): Promise<Onboa
 
 export async function getGamePassport(): Promise<GamePassport> {
   return parse<GamePassport>(await fetch(`${API_BASE_URL}/game/passport`, {
+    headers: getAuthHeaders(),
+  }))
+}
+
+export async function getGameCityReadiness(): Promise<GameCityReadiness[]> {
+  return parse<GameCityReadiness[]>(await fetch(`${API_BASE_URL}/game/cities/readiness`, {
     headers: getAuthHeaders(),
   }))
 }

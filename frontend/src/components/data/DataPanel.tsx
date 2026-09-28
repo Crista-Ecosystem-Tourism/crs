@@ -12,6 +12,7 @@ import { CountryCarousel } from './CountryCarousel'
 import { useApp } from '@/context/AppContext'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/api/chatApi'
+import { getGameCityReadiness, type GameCityReadiness } from '@/api/gameApi'
 import { createWikiDraft, getMyWikiDrafts, getWikiArticle, getWikiReviewQueue, publishWikiDraft, submitWikiDraft, type WikiDraft as ServerWikiDraft, type WikiPublishedArticle } from '@/api/wikiApi'
 
 interface DataPanelProps {
@@ -287,6 +288,42 @@ function ReviewQueue({ isEditor }: { isEditor: boolean }) {
   )
 }
 
+function CityReadiness({ isEditor }: { isEditor: boolean }) {
+  const [cities, setCities] = useState<GameCityReadiness[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const { language } = useApp()
+  const en = language === 'en'
+
+  useEffect(() => {
+    if (!isEditor) return
+    let active = true
+    getGameCityReadiness().then((result) => {
+      if (active) setCities(result)
+    }).catch(() => {
+      if (active) setError(en ? 'Could not load city readiness.' : 'Не удалось загрузить готовность городов.')
+    })
+    return () => { active = false }
+  }, [en, isEditor])
+
+  if (!isEditor) return null
+  return <GlassPanel className="mb-6 border-primary/25 p-4" aria-label={en ? 'City content readiness' : 'Готовность контента городов'}>
+    <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{en ? 'Game content · city readiness' : 'Игровой контент · готовность городов'}</p>
+    <div className="mt-3 space-y-2">
+      {cities.map((city) => <div key={city.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-hairline bg-panel-2/60 p-3">
+        <div>
+          <p className="font-sans text-sm font-semibold text-text">{city.name} · tier {city.tier}</p>
+          <p className="mt-1 font-sans text-xs text-text-muted">
+            {en ? 'Published lessons:' : 'Опубликованные уроки:'} {city.published_quest_count}/{city.required_quest_count} · {en ? 'With sources:' : 'С источниками:'} {city.sourced_quest_count}/{city.published_quest_count}
+          </p>
+        </div>
+        <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>
+      </div>)}
+      {!cities.length && !error && <p className="font-sans text-sm text-text-secondary">{en ? 'No cities are configured yet.' : 'Города пока не настроены.'}</p>}
+    </div>
+    {error && <p role="alert" className="mt-3 font-sans text-xs text-error">{error}</p>}
+  </GlassPanel>
+}
+
 export function DataPanel({ onBack }: DataPanelProps) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [tab, setTab] = useState<'history' | 'cuisine' | 'traditions'>('history')
@@ -492,6 +529,7 @@ export function DataPanel({ onBack }: DataPanelProps) {
 
         <AuthoredDrafts signedIn={Boolean(user)} />
         <ReviewQueue isEditor={user?.isEditor === true} />
+        <CityReadiness isEditor={user?.isEditor === true} />
         <PublishedMoscowArticle signedIn={Boolean(user)} />
 
         <div className="relative mb-6 max-w-md">
