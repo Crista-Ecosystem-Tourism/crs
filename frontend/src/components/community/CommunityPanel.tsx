@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
 import { useApp } from '@/context/AppContext'
 import { isLoggedIn } from '@/api/authApi'
-import { getPublishedStarRoutes, getStarRouteReviewQueue, publishStarRoute, type PublishedStarRoute, type ReviewStarRoute } from '@/api/starRouteApi'
+import { addStarRouteSegment, createStarRouteCandidate, getPublishedStarRoutes, getStarRouteReviewQueue, publishStarRoute, registerStarRouteTranscript, type PublishedStarRoute, type ReviewStarRoute, type StarRoutePoiInput } from '@/api/starRouteApi'
 import {
   acceptFriendInvite,
   addTeamMember,
@@ -108,6 +108,42 @@ function StarRouteReviewQueue({ language, isEditor }: { language: 'ru' | 'en'; i
     {!routes.length && !error && <p className="text-sm text-text-secondary">{en ? 'No routes await review.' : 'В очереди review нет маршрутов.'}</p>}
     {routes.map((route) => <div key={route.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-3"><div><p className="font-semibold text-text">{route.title}</p><p className="text-xs text-text-muted">{route.destination} · {route.pois.length} POI</p></div><Button size="sm" disabled={busy === route.id} onClick={() => void publish(route.id)}>{busy === route.id ? (en ? 'Publishing…' : 'Публикуем…') : (en ? 'Publish' : 'Опубликовать')}</Button></div>)}
     {error && <p role="alert" className="text-sm text-error">{error}</p>}
+  </GlassPanel>
+}
+
+type PoiDraft = StarRoutePoiInput & { key: string }
+const emptyPoi = (): PoiDraft => ({ key: crypto.randomUUID(), segment_id: '', name: '', latitude: 0, longitude: 0, source_url: '' })
+
+function StarRouteDraftEditor({ language, isEditor }: { language: 'ru' | 'en'; isEditor: boolean }) {
+  const en = language === 'en'
+  const [title, setTitle] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
+  const [author, setAuthor] = useState('')
+  const [rights, setRights] = useState<'owned' | 'licensed' | 'written_permission'>('licensed')
+  const [transcriptId, setTranscriptId] = useState('')
+  const [segment, setSegment] = useState({ start_seconds: '', end_seconds: '', excerpt: '', extracted_place_name: '' })
+  const [segments, setSegments] = useState<{ id: string; extracted_place_name: string }[]>([])
+  const [destination, setDestination] = useState('')
+  const [routeTitle, setRouteTitle] = useState('')
+  const [pois, setPois] = useState<PoiDraft[]>([emptyPoi(), emptyPoi()])
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  if (!isEditor) return null
+  const failed = (message: string) => setNotice(message)
+  const register = async () => { setBusy(true); setNotice(null); try { const item = await registerStarRouteTranscript({ title, source_url: sourceUrl, author_name: author || null, rights_basis: rights }); setTranscriptId(item.id); setNotice(en ? 'Source registered. Add traceable segments.' : 'Источник зарегистрирован. Добавьте сегменты с таймкодами.') } catch { failed(en ? 'Could not register the source.' : 'Не удалось зарегистрировать источник.') } finally { setBusy(false) } }
+  const addSegment = async () => { setBusy(true); setNotice(null); try { const item = await addStarRouteSegment(transcriptId, { start_seconds: Number(segment.start_seconds), end_seconds: Number(segment.end_seconds), excerpt: segment.excerpt, extracted_place_name: segment.extracted_place_name }); setSegments((items) => [...items, item]); setSegment({ start_seconds: '', end_seconds: '', excerpt: '', extracted_place_name: '' }); setNotice(en ? 'Segment added.' : 'Сегмент добавлен.') } catch { failed(en ? 'Could not add the segment.' : 'Не удалось добавить сегмент.') } finally { setBusy(false) } }
+  const create = async () => { setBusy(true); setNotice(null); try { await createStarRouteCandidate({ transcript_id: transcriptId, title: routeTitle, destination, pois: pois.map(({ key, ...poi }) => poi) }); setNotice(en ? 'Candidate sent to review.' : 'Кандидат отправлен на review.') } catch { failed(en ? 'Could not calculate the candidate route.' : 'Не удалось рассчитать маршрут кандидата.') } finally { setBusy(false) } }
+  const updatePoi = (key: string, field: keyof StarRoutePoiInput, value: string) => setPois((items) => items.map((poi) => poi.key === key ? { ...poi, [field]: field === 'latitude' || field === 'longitude' ? Number(value) : value } : poi))
+  const input = 'h-9 rounded-md border border-hairline bg-panel px-2 text-sm text-text'
+  return <GlassPanel className="mt-6 space-y-4 p-4">
+    <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{en ? 'Star routes · source to review' : 'Звёздные маршруты · источник до review'}</p>
+    <div className="grid gap-2 sm:grid-cols-2"><input className={input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={en ? 'Source title' : 'Название источника'} /><input className={input} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" /><input className={input} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={en ? 'Author (optional)' : 'Автор, необязательно'} /><select className={input} value={rights} onChange={(e) => setRights(e.target.value as typeof rights)}><option value="licensed">licensed</option><option value="owned">owned</option><option value="written_permission">written permission</option></select></div>
+    <Button size="sm" disabled={busy || !title || !sourceUrl} onClick={() => void register()}>{en ? 'Register source' : 'Зарегистрировать источник'}</Button>
+    {transcriptId && <><p className="text-xs text-text-muted">Transcript ID: {transcriptId}</p><div className="grid gap-2 sm:grid-cols-2"><input className={input} value={segment.start_seconds} onChange={(e) => setSegment({ ...segment, start_seconds: e.target.value })} placeholder={en ? 'Start seconds' : 'Начало, секунды'} /><input className={input} value={segment.end_seconds} onChange={(e) => setSegment({ ...segment, end_seconds: e.target.value })} placeholder={en ? 'End seconds' : 'Конец, секунды'} /><input className={input} value={segment.extracted_place_name} onChange={(e) => setSegment({ ...segment, extracted_place_name: e.target.value })} placeholder={en ? 'Extracted place' : 'Извлечённое место'} /><input className={input} value={segment.excerpt} onChange={(e) => setSegment({ ...segment, excerpt: e.target.value })} placeholder={en ? 'Short excerpt' : 'Короткий фрагмент'} /></div><Button size="sm" variant="secondary" disabled={busy || !segment.excerpt || !segment.extracted_place_name} onClick={() => void addSegment()}>{en ? 'Add segment' : 'Добавить сегмент'}</Button>
+      <div className="grid gap-2 sm:grid-cols-2"><input className={input} value={routeTitle} onChange={(e) => setRouteTitle(e.target.value)} placeholder={en ? 'Route title' : 'Название маршрута'} /><input className={input} value={destination} onChange={(e) => setDestination(e.target.value)} placeholder={en ? 'Destination' : 'Направление'} /></div>
+      {pois.map((poi, index) => <div key={poi.key} className="grid gap-2 rounded border border-hairline p-2 sm:grid-cols-3"><select className={input} value={poi.segment_id} onChange={(e) => updatePoi(poi.key, 'segment_id', e.target.value)}><option value="">{en ? 'Segment' : 'Сегмент'}</option>{segments.map((item) => <option key={item.id} value={item.id}>{item.extracted_place_name}</option>)}</select><input className={input} value={poi.name} onChange={(e) => updatePoi(poi.key, 'name', e.target.value)} placeholder={en ? 'POI name' : 'Название POI'} /><input className={input} value={poi.source_url} onChange={(e) => updatePoi(poi.key, 'source_url', e.target.value)} placeholder="POI https://…" /><input className={input} value={String(poi.latitude)} onChange={(e) => updatePoi(poi.key, 'latitude', e.target.value)} placeholder="Latitude" /><input className={input} value={String(poi.longitude)} onChange={(e) => updatePoi(poi.key, 'longitude', e.target.value)} placeholder="Longitude" /><button type="button" className="text-xs text-error" onClick={() => setPois((items) => items.length > 2 ? items.filter((item) => item.key !== poi.key) : items)}>{en ? 'Remove' : 'Удалить'} {index + 1}</button></div>)}
+      <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => setPois((items) => [...items, emptyPoi()])}>{en ? 'Add POI' : 'Добавить POI'}</Button><Button size="sm" disabled={busy || !routeTitle || !destination || pois.some((poi) => !poi.segment_id || !poi.name || !poi.source_url)} onClick={() => void create()}>{en ? 'Calculate candidate' : 'Рассчитать кандидата'}</Button></div></>}
+    {notice && <p role="status" className="text-sm text-text-secondary">{notice}</p>}
   </GlassPanel>
 }
 
@@ -614,6 +650,7 @@ export function CommunityPanel({ onBack }: CommunityPanelProps) {
           {/* Маршруты */}
           <TabsContent value="routes" className="mt-6 outline-none">
             <StarRoutesSection language={language} />
+            <StarRouteDraftEditor language={language} isEditor={Boolean(user?.isEditor)} />
             <StarRouteReviewQueue language={language} isEditor={Boolean(user?.isEditor)} />
           </TabsContent>
 
