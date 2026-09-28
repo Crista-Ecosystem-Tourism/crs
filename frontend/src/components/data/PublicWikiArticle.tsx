@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { BookOpenCheck, Globe } from 'lucide-react'
 import { ApiError } from '@/api/chatApi'
 import { getWikiArticle, type WikiPublishedArticle } from '@/api/wikiApi'
@@ -35,10 +36,14 @@ function articleText(body: Record<string, unknown>): string[] {
 }
 
 export function PublicWikiArticle({ slug }: { slug: string }) {
+  const [searchParams] = useSearchParams()
   const [article, setArticle] = useState<WikiPublishedArticle | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const language = typeof navigator !== 'undefined' && navigator.language.startsWith('en') ? 'en' : 'ru'
+  const requestedLanguage = searchParams.get('language')
+  const language = requestedLanguage === 'en' || requestedLanguage === 'ru'
+    ? requestedLanguage
+    : (typeof navigator !== 'undefined' && navigator.language.startsWith('en') ? 'en' : 'ru')
   const paragraphs = useMemo(() => article ? articleText(article.body) : [], [article])
 
   useEffect(() => {

@@ -43,7 +43,7 @@ export function CityPilot({ cityId, signedIn, refreshKey, onCompleted }: { cityI
   return <GlassPanel variant="flat" className="p-5">
     <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.pilotLabel}</p>
     <h2 className="mt-1 font-display text-xl font-semibold text-text">{copy.cityPilotNames[cityId]}</h2>
-    {path.city.wiki_reference && <a href={`/w/${path.city.wiki_reference.slug}`} className="mt-3 inline-flex items-center gap-2 font-sans text-sm text-primary hover:underline" aria-label={copy.cityWikiAria(copy.cityPilotNames[cityId])}>
+    {path.city.wiki_reference && <a href={`/w/${path.city.wiki_reference.slug}?language=${language}`} className="mt-3 inline-flex items-center gap-2 font-sans text-sm text-primary hover:underline" aria-label={copy.cityWikiAria(copy.cityPilotNames[cityId])}>
       <BookOpenCheck className="h-4 w-4" />{copy.cityWikiLink(path.city.wiki_reference.version_id)}
     </a>}
     <ol className="mt-4 space-y-2">
