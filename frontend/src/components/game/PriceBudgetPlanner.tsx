@@ -10,7 +10,10 @@ export function PriceBudgetPlanner() {
   const en = language === 'en'
   const [budget, setBudget] = useState('')
   const [currency, setCurrency] = useState('RUB')
+  const [days, setDays] = useState('1')
   const [required, setRequired] = useState('')
+  const [transport, setTransport] = useState('')
+  const [daily, setDaily] = useState('')
   const [optional, setOptional] = useState('')
   const [result, setResult] = useState<PriceBudgetPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -20,14 +23,17 @@ export function PriceBudgetPlanner() {
     event.preventDefault()
     const budgetMinor = parsePriceMinor(budget)
     const normalizedCurrency = currency.trim().toUpperCase()
+    const tripDays = Number(days)
     const requiredKeys = splitSubjectKeys(required)
+    const transportKeys = splitSubjectKeys(transport)
+    const dailyKeys = splitSubjectKeys(daily)
     const optionalKeys = splitSubjectKeys(optional)
-    if (budgetMinor === null || !/^[A-Z]{3}$/.test(normalizedCurrency) || !requiredKeys.length && !optionalKeys.length) {
+    if (budgetMinor === null || !/^[A-Z]{3}$/.test(normalizedCurrency) || !Number.isInteger(tripDays) || tripDays < 1 || tripDays > 60 || !requiredKeys.length && !transportKeys.length && !dailyKeys.length && !optionalKeys.length) {
       setError(en ? 'Enter a budget, currency, and at least one item.' : 'Укажите бюджет, валюту и хотя бы одну позицию.')
       return
     }
-    if (requiredKeys.length > 100 || optionalKeys.length > 100) {
-      setError(en ? 'Use at most 100 required and 100 optional items.' : 'Можно указать не более 100 обязательных и 100 необязательных позиций.')
+    if (requiredKeys.length > 100 || transportKeys.length > 100 || dailyKeys.length > 100 || optionalKeys.length > 100) {
+      setError(en ? 'Use at most 100 items in each group.' : 'В каждой группе можно указать не более 100 позиций.')
       return
     }
     setBusy(true)
@@ -37,7 +43,10 @@ export function PriceBudgetPlanner() {
       setResult(await planPriceBudget({
         budget_minor: budgetMinor,
         currency: normalizedCurrency,
+        trip_days: tripDays,
         required_subject_keys: requiredKeys,
+        transport_subject_keys: transportKeys,
+        daily_subject_keys: dailyKeys,
         optional_subject_keys: optionalKeys,
       }))
     } catch (reason) {
@@ -62,9 +71,21 @@ export function PriceBudgetPlanner() {
         <label className="sr-only" htmlFor="price-budget-currency">{en ? 'Currency' : 'Валюта'}</label>
         <input id="price-budget-currency" value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} maxLength={3} className="h-10 rounded-md border border-hairline bg-panel px-3 font-sans text-sm uppercase text-text" />
       </div>
+      <label className="block font-sans text-xs text-text-secondary" htmlFor="price-budget-days">
+        {en ? 'Trip days' : 'Дней в поездке'}
+        <input id="price-budget-days" value={days} onChange={(event) => setDays(event.target.value)} inputMode="numeric" maxLength={2} className="mt-1 block h-10 w-24 rounded-md border border-hairline bg-panel px-3 font-sans text-sm text-text" />
+      </label>
       <label className="block font-sans text-xs text-text-secondary" htmlFor="price-budget-required">
         {en ? 'Required items' : 'Обязательные позиции'}
         <textarea id="price-budget-required" value={required} onChange={(event) => setRequired(event.target.value)} rows={2} maxLength={20_000} placeholder={en ? 'One item per line or separated by commas' : 'По одной в строке или через запятую'} className="mt-1 block w-full rounded-md border border-hairline bg-panel p-2 text-sm text-text placeholder:text-text-muted" />
+      </label>
+      <label className="block font-sans text-xs text-text-secondary" htmlFor="price-budget-transport">
+        {en ? 'Transport items' : 'Транспорт'}
+        <textarea id="price-budget-transport" value={transport} onChange={(event) => setTransport(event.target.value)} rows={2} maxLength={20_000} placeholder={en ? 'One-off transport price keys' : 'Ключи одноразовых транспортных цен'} className="mt-1 block w-full rounded-md border border-hairline bg-panel p-2 text-sm text-text placeholder:text-text-muted" />
+      </label>
+      <label className="block font-sans text-xs text-text-secondary" htmlFor="price-budget-daily">
+        {en ? 'Per-day items' : 'Расходы в день'}
+        <textarea id="price-budget-daily" value={daily} onChange={(event) => setDaily(event.target.value)} rows={2} maxLength={20_000} placeholder={en ? 'Each fresh price is multiplied by the trip days' : 'Каждая свежая цена умножается на дни поездки'} className="mt-1 block w-full rounded-md border border-hairline bg-panel p-2 text-sm text-text placeholder:text-text-muted" />
       </label>
       <label className="block font-sans text-xs text-text-secondary" htmlFor="price-budget-optional">
         {en ? 'Optional items' : 'Необязательные позиции'}
@@ -98,6 +119,7 @@ function BudgetPlanResult({ result, language }: { result: PriceBudgetPlan; langu
       : (en ? 'Everything fits in the budget.' : 'Все позиции укладываются в бюджет.')}
     </p>
     {total && remaining && <p className="mt-1">{en ? 'Plan:' : 'План:'} {total} · {en ? 'left:' : 'осталось:'} {remaining}</p>}
+    {result.required_breakdown?.length ? <ul className="mt-2 space-y-1 text-xs">{result.required_breakdown.map((line) => <li key={line.subject_key}>{line.subject_key} × {line.quantity} = {formatMoney(line.total_minor, result.currency, language)}</li>)}</ul> : null}
     {result.included?.length ? <p className="mt-1">{en ? 'Included:' : 'Включено:'} {result.included.join(', ')}</p> : null}
     {result.excluded?.length ? <p className="mt-1">{en ? 'Excluded:' : 'Исключено:'} {result.excluded.join(', ')}</p> : null}
   </div>

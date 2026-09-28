@@ -23,6 +23,7 @@ export type PriceBudgetPlan = {
   status: 'feasible' | 'compromise' | 'infeasible' | 'unknown'
   budget_minor: number
   currency: string
+  trip_days?: number
   total_minor?: number
   remaining_minor?: number
   missing?: string[]
@@ -30,6 +31,7 @@ export type PriceBudgetPlan = {
   included?: string[]
   excluded?: string[]
   unavailable?: string[]
+  required_breakdown?: { subject_key: string; quantity: number; unit_minor: number; total_minor: number }[]
 }
 
 export type CurrentPriceQuote =
@@ -84,7 +86,10 @@ export async function unsubscribePriceWatch(watchId: string): Promise<void> {
 export async function planPriceBudget(payload: {
   budget_minor: number
   currency: string
+  trip_days: number
   required_subject_keys: string[]
+  transport_subject_keys: string[]
+  daily_subject_keys: string[]
   optional_subject_keys: string[]
 }): Promise<PriceBudgetPlan> {
   return parse<PriceBudgetPlan>(await fetch(`${API_BASE_URL}/prices/budget-plan`, {
