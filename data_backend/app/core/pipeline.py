@@ -21,6 +21,7 @@ from app.core.repository import (
     mark_embedded,
     upsert_places,
 )
+from app.core.vector_contract import place_to_vector_record
 from app.db import SessionFactory
 from app.models import BootstrapState, Place, SourceRun
 from app.sources.registry import get_source, list_sources
@@ -182,7 +183,7 @@ async def reindex_pending(batch_size: int | None = None) -> dict[str, Any]:
             if not places:
                 break
             batches += 1
-            payload = [_place_to_record(p) for p in places]
+            payload = [place_to_vector_record(place) for place in places]
             result = await reindex_chroma(payload)
             if result.get("status") != "ok":
                 log.warning("reindex_chroma not ok: %s", result)
@@ -198,67 +199,6 @@ async def reindex_pending(batch_size: int | None = None) -> dict[str, Any]:
             cleanup_old_seeds()
 
     return {"status": "ok", "indexed": total_indexed, "batches": batches}
-
-
-def _place_to_record(place: Place) -> dict[str, Any]:
-    """Сериализация Place под формат, ожидаемый vectorization /load/json.
-
-    ``vectorization_backend`` historically expected a legacy nested shape while
-    this service persists normalized flat fields. Emit the normalized fields as
-    the source of truth and the small compatibility projection alongside them.
-    This keeps city/category filters and descriptive text intact during the
-    transition instead of silently indexing them as empty values.
-    """
-
-    desc = place.description or place.name
-    text_parts = [
-        place.name,
-        place.category,
-        place.subcategory or "",
-        place.city or "",
-        place.country or "",
-        desc,
-    ]
-    page_content = ". ".join(p for p in text_parts if p)
-
-    subcategories = [place.category]
-    if place.subcategory and place.subcategory not in subcategories:
-        subcategories.append(place.subcategory)
-
-    return {
-        "id": str(place.id),
-        "external_id": place.external_id,
-        "source": place.source,
-        "name": place.name,
-        "category": place.category,
-        "subcategory": place.subcategory,
-        "subcategories": subcategories,
-        "subtype": [place.subcategory] if place.subcategory else [],
-        "city": place.city,
-        "region": place.region,
-        "country": place.country,
-        "addressObj": {
-            "city": place.city or "",
-            "state": place.region or "",
-            "country": place.country or "",
-        },
-        "lat": place.lat,
-        "lng": place.lng,
-        "latitude": place.lat,
-        "longitude": place.lng,
-        "description": desc,
-        "page_content": page_content,
-        "tags": place.tags,
-        "rating": place.rating,
-        "numberOfReviews": None,
-        "image": place.image_urls[0] if place.image_urls else None,
-        "image_urls": place.image_urls,
-        "website": place.website,
-        "phone": place.phone,
-        "license": place.license,
-        "attribution": place.attribution,
-        "source_url": place.source_url,
-    }
 
 
 async def bootstrap() -> dict[str, Any]:
