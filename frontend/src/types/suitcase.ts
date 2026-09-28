@@ -12,6 +12,7 @@ export interface SuitcaseTrip {
   impressions?: string
   photos?: string[]
   isArchived?: boolean
+  isHistorical?: boolean
   createdAt: string
 }
 

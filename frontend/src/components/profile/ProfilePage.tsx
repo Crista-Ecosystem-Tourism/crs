@@ -21,7 +21,7 @@ import { trips } from '@/mocks/trips'
 import { getInitials, cn } from '@/lib/utils'
 import { getProfileCopy } from '@/lib/settingsCopy'
 
-type ProfileTripCard = Pick<SuitcaseTrip, 'id' | 'city' | 'country' | 'startDate' | 'endDate' | 'image'> & { title: string }
+type ProfileTripCard = Pick<SuitcaseTrip, 'id' | 'city' | 'country' | 'startDate' | 'endDate' | 'image' | 'isHistorical'> & { title: string }
 
 function formatProfileTripDates(startDate: string, endDate: string, language: 'ru' | 'en'): string {
   const formatter = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })
@@ -105,7 +105,7 @@ export function ProfilePage() {
       }))
     : (suitcaseTrips ?? []).filter((trip) => !trip.isArchived).map((trip) => ({
         id: trip.id, title: `${trip.city}, ${trip.country}`, city: trip.city, country: trip.country,
-        startDate: trip.startDate, endDate: trip.endDate, image: trip.image,
+        startDate: trip.startDate, endDate: trip.endDate, image: trip.image, isHistorical: trip.isHistorical,
       }))
 
   const achievements = [
@@ -375,6 +375,9 @@ export function ProfilePage() {
                         className="h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
                       /> : <div className="flex h-full items-center justify-center bg-panel-2 text-text-muted"><MapPin className="h-8 w-8" aria-hidden="true" /></div>}
                       {trip.image && <div className="photo-scrim absolute inset-0" />}
+                      {trip.isHistorical && <span className="absolute left-3 top-3 rounded-full bg-panel/95 px-2.5 py-1 font-sans text-[11px] font-semibold text-text shadow-sm">
+                        {copy.historicalTrip}
+                      </span>}
                       <div className="absolute inset-x-0 bottom-0 p-4">
                         <p className="font-display text-xl font-semibold leading-tight text-white">
                           {trip.title}

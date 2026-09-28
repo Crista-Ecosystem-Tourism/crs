@@ -33,6 +33,7 @@ export type ApiSuitcaseTripRow = {
   impressions?: string | null
   photos?: string[] | null
   is_archived: boolean
+  is_historical?: boolean
   created_at?: string | null
   updated_at?: string | null
 }
@@ -122,6 +123,7 @@ export function mapTripFromApi(r: ApiSuitcaseTripRow): SuitcaseTrip {
     impressions: r.impressions ?? undefined,
     photos: r.photos ?? undefined,
     isArchived: r.is_archived,
+    isHistorical: r.is_historical === true,
     createdAt: r.created_at ?? '',
   }
 }
