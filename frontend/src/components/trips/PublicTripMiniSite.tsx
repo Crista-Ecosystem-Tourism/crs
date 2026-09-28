@@ -84,6 +84,11 @@ export function PublicTripMiniSite({ slug }: { slug: string }) {
     }
   }, [page])
 
+  useEffect(() => {
+    if (!error) return
+    return setHeadAttribute('meta[name="robots"]', 'meta', 'content', 'noindex, nofollow', { name: 'robots' })
+  }, [error])
+
   if (loading) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary">Загружаю поездку…</main>
   if (error || !page) return <main className="min-h-screen bg-background p-8 text-center text-text-secondary"><h1 className="text-xl font-semibold text-text">Мини-сайт поездки</h1><p className="mt-3">{error || 'Страница недоступна.'}</p></main>
 
