@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
 import { useApp } from '@/context/AppContext'
 import { isLoggedIn } from '@/api/authApi'
-import { getPublishedStarRoutes, type PublishedStarRoute } from '@/api/starRouteApi'
+import { getPublishedStarRoutes, getStarRouteReviewQueue, publishStarRoute, type PublishedStarRoute, type ReviewStarRoute } from '@/api/starRouteApi'
 import {
   acceptFriendInvite,
   addTeamMember,
@@ -85,6 +85,30 @@ function StarRoutesSection({ language }: { language: 'ru' | 'en' }) {
       <p className="mt-4 flex items-center gap-1.5 font-sans text-xs text-text-secondary"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{route.pois.length} {en ? 'verified POI' : 'проверенных POI'}</p>
     </article>)}
   </div>
+}
+
+function StarRouteReviewQueue({ language, isEditor }: { language: 'ru' | 'en'; isEditor: boolean }) {
+  const [routes, setRoutes] = useState<ReviewStarRoute[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const en = language === 'en'
+  useEffect(() => {
+    if (!isEditor) return
+    getStarRouteReviewQueue().then(setRoutes).catch(() => setError(en ? 'Could not load the review queue.' : 'Не удалось загрузить очередь review.'))
+  }, [en, isEditor])
+  if (!isEditor) return null
+  const publish = async (routeId: string) => {
+    setBusy(routeId); setError(null)
+    try { await publishStarRoute(routeId); setRoutes((items) => items.filter((item) => item.id !== routeId)) }
+    catch { setError(en ? 'Could not publish this route.' : 'Не удалось опубликовать маршрут.') }
+    finally { setBusy(null) }
+  }
+  return <GlassPanel className="mt-6 space-y-3 p-4">
+    <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{en ? 'Star routes · editorial review' : 'Звёздные маршруты · редакторская очередь'}</p>
+    {!routes.length && !error && <p className="text-sm text-text-secondary">{en ? 'No routes await review.' : 'В очереди review нет маршрутов.'}</p>}
+    {routes.map((route) => <div key={route.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-3"><div><p className="font-semibold text-text">{route.title}</p><p className="text-xs text-text-muted">{route.destination} · {route.pois.length} POI</p></div><Button size="sm" disabled={busy === route.id} onClick={() => void publish(route.id)}>{busy === route.id ? (en ? 'Publishing…' : 'Публикуем…') : (en ? 'Publish' : 'Опубликовать')}</Button></div>)}
+    {error && <p role="alert" className="text-sm text-error">{error}</p>}
+  </GlassPanel>
 }
 
 function LeagueSection({ language }: { language: 'ru' | 'en' }) {
@@ -590,6 +614,7 @@ export function CommunityPanel({ onBack }: CommunityPanelProps) {
           {/* Маршруты */}
           <TabsContent value="routes" className="mt-6 outline-none">
             <StarRoutesSection language={language} />
+            <StarRouteReviewQueue language={language} isEditor={Boolean(user?.isEditor)} />
           </TabsContent>
 
           {/* Лидерборд */}

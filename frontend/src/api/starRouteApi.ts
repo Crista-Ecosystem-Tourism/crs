@@ -1,4 +1,5 @@
 import { ApiError } from './chatApi'
+import { getAuthHeaders } from './authApi'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
@@ -32,22 +33,29 @@ export type PublishedStarRoute = {
   published_at: string
 }
 
-export async function getPublishedStarRoutes(): Promise<PublishedStarRoute[]> {
-  const response = await fetch(`${API_BASE_URL}/star-routes`)
+export type ReviewStarRoute = Omit<PublishedStarRoute, 'status' | 'published_at'> & { status: 'review'; published_at: null }
+
+async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
     try { detail = (await response.json()).detail || detail } catch { /* proxy or HTML response */ }
     throw new ApiError(response.status, detail)
   }
-  return response.json() as Promise<PublishedStarRoute[]>
+  return response.json() as Promise<T>
+}
+
+export async function getPublishedStarRoutes(): Promise<PublishedStarRoute[]> {
+  return parse<PublishedStarRoute[]>(await fetch(`${API_BASE_URL}/star-routes`))
 }
 
 export async function getPublishedStarRoute(routeId: string): Promise<PublishedStarRoute> {
-  const response = await fetch(`${API_BASE_URL}/star-routes/${encodeURIComponent(routeId)}`)
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`
-    try { detail = (await response.json()).detail || detail } catch { /* proxy or HTML response */ }
-    throw new ApiError(response.status, detail)
-  }
-  return response.json() as Promise<PublishedStarRoute>
+  return parse<PublishedStarRoute>(await fetch(`${API_BASE_URL}/star-routes/${encodeURIComponent(routeId)}`))
+}
+
+export async function getStarRouteReviewQueue(): Promise<ReviewStarRoute[]> {
+  return parse<ReviewStarRoute[]>(await fetch(`${API_BASE_URL}/star-routes/review`, { headers: getAuthHeaders() }))
+}
+
+export async function publishStarRoute(routeId: string): Promise<PublishedStarRoute> {
+  return parse<PublishedStarRoute>(await fetch(`${API_BASE_URL}/star-routes/review/${encodeURIComponent(routeId)}/publish`, { method: 'POST', headers: getAuthHeaders() }))
 }
