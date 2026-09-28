@@ -57,7 +57,7 @@ export function TripMiniSiteControls({ tripId }: { tripId: string }) {
   }, [tripId])
 
   const publish = async () => {
-    if (!consent || !sameStampSelection) return
+    if (!consent || !sameStampSelection || (visibility === 'public' && !publicQualityReady)) return
     setBusy(true)
     setError('')
     try {
@@ -85,6 +85,18 @@ export function TripMiniSiteControls({ tripId }: { tripId: string }) {
 
   const sameStampSelection = selectedStamps.length === previewStampKeys.length
     && [...selectedStamps].sort().every((key, index) => key === [...previewStampKeys].sort()[index])
+  const preview = site?.preview_snapshot ?? site?.draft_snapshot
+  const namedPoints = preview?.points.filter((point) => Boolean(point.name?.trim())).length ?? 0
+  const publicQualityReady = Boolean(site?.completed_at)
+    && (preview?.summary.trim().length ?? 0) >= 80
+    && namedPoints >= 2
+  const publicQualityMessage = !site?.completed_at
+    ? 'Завершите поездку перед публичной публикацией.'
+    : (preview?.summary.trim().length ?? 0) < 80
+      ? 'Для публичной страницы добавьте описание поездки не короче 80 символов.'
+      : namedPoints < 2
+        ? 'Для публичной страницы добавьте минимум две подписанные точки маршрута.'
+        : null
 
   const revoke = async () => {
     if (!window.confirm('Отозвать публикацию? Ссылка сразу перестанет открываться.')) return
@@ -168,11 +180,12 @@ export function TripMiniSiteControls({ tripId }: { tripId: string }) {
         <input type="radio" name={`trip-visibility-${tripId}`} checked={visibility === 'public'} onChange={() => setVisibility('public')} />
         Публично: страницу смогут открыть все, у кого есть URL; поисковики могут её индексировать
       </label>
+      {visibility === 'public' && publicQualityMessage && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-text-secondary">{publicQualityMessage}</p>}
       <label className="flex items-start gap-2 rounded-lg bg-surface p-3 text-xs leading-relaxed text-text-secondary">
-        <input type="checkbox" checked={consent} disabled={!sameStampSelection} onChange={(event) => setConsent(event.target.checked)} />
+        <input type="checkbox" checked={consent} disabled={!sameStampSelection || (visibility === 'public' && !publicQualityReady)} onChange={(event) => setConsent(event.target.checked)} />
         Я проверил(а) предпросмотр выше и согласен(на) опубликовать показанные данные. Внешние HTTPS-фото останутся на исходных сайтах.
       </label>
-      <button type="button" disabled={busy || !consent || !sameStampSelection} onClick={() => void publish()} className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-50">
+      <button type="button" disabled={busy || !consent || !sameStampSelection || (visibility === 'public' && !publicQualityReady)} onClick={() => void publish()} className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-50">
         {busy ? 'Сохраняю…' : url ? 'Обновить после согласия' : 'Опубликовать snapshot'}
       </button>
       {url && editing && <button type="button" disabled={busy} onClick={() => { setEditing(false); setConsent(false) }} className="ml-2 rounded-lg border border-border px-3 py-2 text-xs text-text disabled:opacity-50">
