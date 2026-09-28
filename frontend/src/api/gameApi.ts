@@ -107,6 +107,7 @@ export type MoscowPathState = {
     tier: number
     required_quest_count: number
     completion_stamp: { key: string; title: string } | null
+    wiki_reference?: { slug: string; version_id: string } | null
   }
   profile: GameProfile
   daily: GameDailyProgress

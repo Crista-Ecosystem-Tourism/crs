@@ -84,6 +84,8 @@ interface GameCopy {
   pilotNodeStates: { completed: string; unlocked: string; locked: string }
   pilotComplete: string
   pilotContentLanguageNote: string
+  cityWikiLink: (version: string) => string
+  cityWikiAria: (city: string) => string
   source: string
   openSource: string
   truthOrMyth: string
@@ -281,6 +283,8 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
     }, pilotNodeStates: { completed: 'Пройдено', unlocked: 'Открыто', locked: 'Закрыто' },
     pilotComplete: 'Маршрут завершён. Все факты сохранены с первоисточниками.',
     pilotContentLanguageNote: 'Тексты фактов и вопросов пока доступны только на русском — это проверенное серверное издание.',
+    cityWikiLink: (version) => `Контекст города · Crista Wiki ${version}`,
+    cityWikiAria: (city) => `Открыть статью Crista Wiki о городе ${city}`,
     source: 'Источник', openSource: 'открыть', truthOrMyth: 'Правда или миф', timeline: 'Временная шкала',
     correctXp: (xp) => `Верно! +${xp} XP`, tryAgain: 'Почти! Попробуйте ещё раз.', saveAnswerFailed: 'Не удалось сохранить ответ. Попробуйте ещё раз.',
     questUnavailable: 'Квест пока недоступен.',
@@ -411,6 +415,8 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
     pilotNodeStates: { completed: 'Completed', unlocked: 'Open', locked: 'Locked' },
     pilotComplete: 'Route complete. All facts include their original sources.',
     pilotContentLanguageNote: 'Fact and question text is currently available only in Russian, the verified server edition.',
+    cityWikiLink: (version) => `City context · Crista Wiki ${version}`,
+    cityWikiAria: (city) => `Open the Crista Wiki article about ${city}`,
     source: 'Source', openSource: 'open', truthOrMyth: 'True or false', timeline: 'Timeline',
     correctXp: (xp) => `Correct! +${xp} XP`, tryAgain: 'Not quite. Try again.', saveAnswerFailed: 'Could not save your answer. Please try again.',
     questUnavailable: 'This quest is temporarily unavailable.',
