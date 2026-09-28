@@ -304,7 +304,15 @@ function ReviewQueue({ isEditor }: { isEditor: boolean }) {
   )
 }
 
-function CityReadiness({ isEditor }: { isEditor: boolean }) {
+function CityReadiness({
+  isEditor,
+  onCreateWiki,
+  refreshToken,
+}: {
+  isEditor: boolean
+  onCreateWiki: (city: GameCityReadiness) => void
+  refreshToken: number
+}) {
   const [cities, setCities] = useState<GameCityReadiness[]>([])
   const [error, setError] = useState<string | null>(null)
   const { language } = useApp()
@@ -331,7 +339,7 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
       if (active) setError(en ? 'Could not load city readiness.' : 'Не удалось загрузить готовность городов.')
     })
     return () => { active = false }
-  }, [en, isEditor])
+  }, [en, isEditor, refreshToken])
 
   if (!isEditor) return null
   return <GlassPanel className="mb-6 border-primary/25 p-4" aria-label={en ? 'City content readiness' : 'Готовность контента городов'}>
@@ -356,7 +364,15 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
             {en ? 'To make ready:' : 'Для готовности:'} {(city.readiness_blockers ?? []).map(blockerLabel).join(' · ')}
           </p>}
         </div>
-        <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>
+        <div className="flex items-center gap-2">
+          {(city.readiness_blockers ?? []).includes('wiki_missing') && (
+            <Button size="sm" variant="secondary" onClick={() => onCreateWiki(city)}>
+              <Pencil />
+              {en ? 'Create Wiki draft' : 'Создать черновик Wiki'}
+            </Button>
+          )}
+          <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>
+        </div>
       </div>)}
       {!cities.length && !error && <p className="font-sans text-sm text-text-secondary">{en ? 'No cities are configured yet.' : 'Города пока не настроены.'}</p>}
     </div>
@@ -369,6 +385,8 @@ export function DataPanel({ onBack }: DataPanelProps) {
   const [tab, setTab] = useState<'history' | 'cuisine' | 'traditions'>('history')
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState(false)
+  const [cityWikiDraft, setCityWikiDraft] = useState<GameCityReadiness | null>(null)
+  const [cityReadinessRevision, setCityReadinessRevision] = useState(0)
   const [editorMessage, setEditorMessage] = useState<string | null>(null)
   const [publishedCountry, setPublishedCountry] = useState<WikiPublishedArticle | null>(null)
   const [countryWikiStatus, setCountryWikiStatus] = useState<'idle' | 'loading' | 'published' | 'missing' | 'unavailable'>('idle')
@@ -384,6 +402,16 @@ export function DataPanel({ onBack }: DataPanelProps) {
   ] as const
 
   const base = articles.find((a) => a.id === openId)
+  const cityDraftArticle = cityWikiDraft ? {
+    id: cityWikiDraft.id,
+    name: cityWikiDraft.name,
+    flag: '🏙️',
+    summary: '',
+    history: '',
+    cuisine: '',
+    traditions: '',
+    practical: [],
+  } : null
   useEffect(() => {
     if (!base) {
       setPublishedCountry(null)
@@ -443,6 +471,28 @@ export function DataPanel({ onBack }: DataPanelProps) {
           await submitWikiDraft(draft.id)
           setEditorMessage('Правка отправлена в серверную очередь review.')
           setEditing(false)
+        }}
+      />
+    )
+  }
+
+  if (cityWikiDraft && cityDraftArticle && user) {
+    return (
+      <WikiEditor
+        article={cityDraftArticle}
+        onCancel={() => setCityWikiDraft(null)}
+        onSave={async (submission: WikiEditorSubmission) => {
+          const draft = await createWikiDraft({
+            slug: cityWikiDraft.id,
+            title: cityWikiDraft.name,
+            body: submission.body,
+            sources: submission.sources,
+            license: submission.license,
+          })
+          await submitWikiDraft(draft.id)
+          setEditorMessage(en ? 'The city Wiki draft was sent to the server review queue.' : 'Черновик Wiki города отправлен в серверную очередь review.')
+          setCityWikiDraft(null)
+          setCityReadinessRevision((revision) => revision + 1)
         }}
       />
     )
@@ -572,7 +622,11 @@ export function DataPanel({ onBack }: DataPanelProps) {
 
         <AuthoredDrafts signedIn={Boolean(user)} />
         <ReviewQueue isEditor={user?.isEditor === true} />
-        <CityReadiness isEditor={user?.isEditor === true} />
+        <CityReadiness
+          isEditor={user?.isEditor === true}
+          onCreateWiki={setCityWikiDraft}
+          refreshToken={cityReadinessRevision}
+        />
         <PublishedMoscowArticle signedIn={Boolean(user)} />
 
         <div className="relative mb-6 max-w-md">
