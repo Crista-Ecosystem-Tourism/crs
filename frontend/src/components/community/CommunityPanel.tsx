@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, Heart, MapPin, Play, Trophy, UserPlus, Copy, RotateCw, UserRoundX } from 'lucide-react'
+import { ArrowLeft, MapPin, Trophy, UserPlus, Copy, RotateCw, UserRoundX } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GlassPanel, Chip, IconButton } from '@/components/ui/glass'
-import { Img } from '@/components/ui/Img'
 import { useApp } from '@/context/AppContext'
 import { isLoggedIn } from '@/api/authApi'
+import { getPublishedStarRoutes, type PublishedStarRoute } from '@/api/starRouteApi'
 import {
   acceptFriendInvite,
   addTeamMember,
@@ -34,44 +34,55 @@ type CommunityPanelProps = {
   onBack: () => void
 }
 
-const starRoutes = [
-  {
-    id: '1',
-    title: 'Тбилиси за 3 дня',
-    author: 'Орёл и Решка',
-    kind: 'Медиа',
-    cover: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800&q=80',
-    likes: 4210,
-    points: 9,
-  },
-  {
-    id: '2',
-    title: 'Секретные точки Сочи',
-    author: 'Гордей',
-    kind: 'Блогер',
-    cover: 'https://images.unsplash.com/photo-1589802829985-817e51171b92?w=800&q=80',
-    likes: 1870,
-    points: 6,
-  },
-  {
-    id: '3',
-    title: 'Гастротур по Москве',
-    author: 'Птушкин',
-    kind: 'Блогер',
-    cover: 'https://images.unsplash.com/photo-1547448415-e9f5b28e570d?w=800&q=80',
-    likes: 2540,
-    points: 7,
-  },
-  {
-    id: '4',
-    title: 'Выходные в Питере',
-    author: 'Аня Ковалёва, подруга',
-    kind: 'Друг',
-    cover: 'https://images.unsplash.com/photo-1556610961-2fecc5927173?w=800&q=80',
-    likes: 96,
-    points: 5,
-  },
-]
+function timecode(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function StarRoutesSection({ language }: { language: 'ru' | 'en' }) {
+  const [routes, setRoutes] = useState<PublishedStarRoute[]>([])
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const en = language === 'en'
+
+  useEffect(() => {
+    let active = true
+    getPublishedStarRoutes().then((result) => {
+      if (active) {
+        setRoutes(result)
+        setStatus('ready')
+      }
+    }).catch(() => {
+      if (active) setStatus('error')
+    })
+    return () => { active = false }
+  }, [])
+
+  if (status === 'loading') return <p role="status" className="text-sm text-text-muted">{en ? 'Loading published routes…' : 'Загружаем опубликованные маршруты…'}</p>
+  if (status === 'error') return <p role="alert" className="text-sm text-error">{en ? 'Could not load published routes.' : 'Не удалось загрузить опубликованные маршруты.'}</p>
+  if (!routes.length) return <p className="rounded-lg border border-dashed border-hairline-2 p-4 text-sm text-text-secondary">{en ? 'No editorially published star routes yet.' : 'Пока нет редакционно опубликованных звёздных маршрутов.'}</p>
+
+  return <div className="grid gap-4 sm:grid-cols-2">
+    {routes.map((route) => <article key={route.id} className="rounded-lg border border-hairline bg-panel p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Chip size="sm">{en ? 'Editorial route' : 'Редакционный маршрут'}</Chip>
+        <span className="font-sans text-xs text-text-muted">{route.destination}</span>
+      </div>
+      <h2 className="font-display text-xl font-semibold leading-tight text-text">{route.title}</h2>
+      <a href={route.source_url} target="_blank" rel="noreferrer" className="mt-2 block truncate font-sans text-xs text-primary hover:underline">
+        {route.source_title}{route.source_author ? ` · ${route.source_author}` : ''}
+      </a>
+      <ol className="mt-4 space-y-2">
+        {route.pois.map((poi) => <li key={poi.segment_id} className="border-l-2 border-primary/50 pl-3">
+          <a href={`${route.source_url}#t=${poi.timecode.start_seconds}`} target="_blank" rel="noreferrer" className="font-sans text-sm font-semibold text-text hover:text-primary hover:underline">
+            {poi.position}. {poi.name}
+          </a>
+          <p className="mt-0.5 font-sans text-xs text-text-muted">{timecode(poi.timecode.start_seconds)}–{timecode(poi.timecode.end_seconds)} · {poi.timecode.extracted_place_name}</p>
+        </li>)}
+      </ol>
+      <p className="mt-4 flex items-center gap-1.5 font-sans text-xs text-text-secondary"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{route.pois.length} {en ? 'verified POI' : 'проверенных POI'}</p>
+    </article>)}
+  </div>
+}
 
 function LeagueSection({ language }: { language: 'ru' | 'en' }) {
   const en = language === 'en'
@@ -575,49 +586,7 @@ export function CommunityPanel({ onBack }: CommunityPanelProps) {
 
           {/* Маршруты */}
           <TabsContent value="routes" className="mt-6 outline-none">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {starRoutes.map((route) => (
-                <article
-                  key={route.id}
-                  className="group overflow-hidden rounded-lg border border-hairline bg-panel transition duration-base ease-standard hover:border-hairline-2 hover:bg-panel-2"
-                >
-                  <div className="relative aspect-[16/9] overflow-hidden">
-                    <Img
-                      src={route.cover}
-                      alt={route.title}
-                      className="h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
-                    />
-                    <div className="photo-scrim absolute inset-0" />
-                    <button
-                      aria-label={`Открыть маршрут «${route.title}»`}
-                      className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-ink-950 opacity-0 transition-opacity duration-base group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Chip size="sm">{route.kind}</Chip>
-                      <span className="truncate font-sans text-xs text-text-muted">{route.author}</span>
-                    </div>
-                    <h3 className="mb-2 font-display text-xl font-semibold leading-tight text-text">
-                      {route.title}
-                    </h3>
-                    <div className="flex items-center justify-between font-sans text-xs text-text-secondary">
-                      <span className="flex items-center gap-1.5">
-                        <Heart className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                        <span className="tabular">{route.likes.toLocaleString('ru')}</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="tabular">{route.points} точек</span>
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <StarRoutesSection language={language} />
           </TabsContent>
 
           {/* Лидерборд */}
