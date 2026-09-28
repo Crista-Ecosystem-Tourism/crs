@@ -32,6 +32,19 @@ export type PriceBudgetPlan = {
   unavailable?: string[]
 }
 
+export type CurrentPriceQuote =
+  | { status: 'unknown'; subject_key: string }
+  | {
+    status: 'fresh'
+    subject_key: string
+    amount_minor: number
+    currency: string
+    source: string
+    source_url: string
+    observed_at: string
+    expires_at: string
+  }
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
@@ -79,4 +92,8 @@ export async function planPriceBudget(payload: {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
   }))
+}
+
+export async function getCurrentPrice(subjectKey: string): Promise<CurrentPriceQuote> {
+  return parse<CurrentPriceQuote>(await fetch(`${API_BASE_URL}/prices/${encodeURIComponent(subjectKey)}`))
 }

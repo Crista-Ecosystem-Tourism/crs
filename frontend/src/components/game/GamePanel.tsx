@@ -26,7 +26,7 @@ import { getGamePassport, type GamePassport } from '@/api/gameApi'
 import { fetchSuitcaseWorkspace, mapGoalFromApi, mapTripFromApi } from '@/api/suitcaseApi'
 import {
   listPriceWatchAlerts, listPriceWatches, savePriceWatch, unsubscribePriceWatch,
-  type PriceWatch, type PriceWatchAlert,
+  getCurrentPrice, type CurrentPriceQuote, type PriceWatch, type PriceWatchAlert,
 } from '@/api/priceApi'
 import type { SuitcaseGoal, SuitcaseTrip } from '@/types/suitcase'
 
@@ -98,6 +98,9 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
   const [priceWatchCurrency, setPriceWatchCurrency] = useState('RUB')
   const [priceWatchBusy, setPriceWatchBusy] = useState(false)
   const [priceWatchError, setPriceWatchError] = useState<string | null>(null)
+  const [priceQuotes, setPriceQuotes] = useState<Record<string, CurrentPriceQuote>>({})
+  const [priceQuoteLoadingKey, setPriceQuoteLoadingKey] = useState<string | null>(null)
+  const [priceQuoteError, setPriceQuoteError] = useState<string | null>(null)
   const { setMainView, language } = useApp()
   const copy = getGameCopy(language)
 
@@ -176,6 +179,8 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
       setPriceWatches([])
       setPriceWatchesLoading(false)
       setPriceWatchesError(null)
+      setPriceQuotes({})
+      setPriceQuoteError(null)
       return
     }
     let current = true
@@ -224,6 +229,19 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
       setPriceWatchError(error instanceof ApiError ? error.detail : (language === 'en' ? 'Could not stop the price watch.' : 'Не удалось отключить подписку на цену.'))
     } finally {
       setPriceWatchBusy(false)
+    }
+  }
+
+  const checkCurrentPrice = async (subjectKey: string) => {
+    setPriceQuoteLoadingKey(subjectKey)
+    setPriceQuoteError(null)
+    try {
+      const quote = await getCurrentPrice(subjectKey)
+      setPriceQuotes((current) => ({ ...current, [subjectKey]: quote }))
+    } catch (error) {
+      setPriceQuoteError(error instanceof ApiError ? error.detail : (language === 'en' ? 'Could not check the current price.' : 'Не удалось проверить текущую цену.'))
+    } finally {
+      setPriceQuoteLoadingKey(null)
     }
   }
 
@@ -336,16 +354,23 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
           </form>
           {(priceWatchError || priceWatchesError) && <p role="alert" className="mt-2 font-sans text-xs text-error">{priceWatchError || priceWatchesError}</p>}
           {priceWatchesLoading && <p role="status" className="mt-3 font-sans text-sm text-text-secondary">{language === 'en' ? 'Loading price watches…' : 'Загружаем подписки на цены…'}</p>}
-          {!priceWatchesLoading && activePriceWatches.length > 0 && <ul className="mt-3 flex flex-wrap gap-2">
+          {!priceWatchesLoading && activePriceWatches.length > 0 && <ul className="mt-3 space-y-2">
             {activePriceWatches.map((watch) => (
-              <li key={watch.id} className="flex items-center gap-2 rounded-full border border-hairline px-3 py-1.5 font-sans text-xs text-text-secondary">
-                <span>{watch.subject_key} · {formatPriceAmount(watch.threshold_minor, watch.currency, language)}</span>
-                <button type="button" onClick={() => void removeWatch(watch.id)} disabled={priceWatchBusy} className="text-link hover:text-primary disabled:opacity-60">
-                  {language === 'en' ? 'Stop' : 'Отключить'}
-                </button>
+              <li key={watch.id} className="rounded-md border border-hairline px-3 py-2 font-sans text-xs text-text-secondary">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{watch.subject_key} · {formatPriceAmount(watch.threshold_minor, watch.currency, language)}</span>
+                  <button type="button" onClick={() => void checkCurrentPrice(watch.subject_key)} disabled={priceQuoteLoadingKey === watch.subject_key} className="text-link hover:text-primary disabled:opacity-60">
+                    {priceQuoteLoadingKey === watch.subject_key ? (language === 'en' ? 'Checking…' : 'Проверяем…') : (language === 'en' ? 'Check price' : 'Проверить цену')}
+                  </button>
+                  <button type="button" onClick={() => void removeWatch(watch.id)} disabled={priceWatchBusy} className="text-link hover:text-primary disabled:opacity-60">
+                    {language === 'en' ? 'Stop' : 'Отключить'}
+                  </button>
+                </div>
+                {priceQuotes[watch.subject_key] && <PriceQuoteDisclosure quote={priceQuotes[watch.subject_key]} language={language} />}
               </li>
             ))}
           </ul>}
+          {priceQuoteError && <p role="alert" className="mt-2 font-sans text-xs text-error">{priceQuoteError}</p>}
           {priceAlertsLoading && <p role="status" className="mt-3 font-sans text-sm text-text-secondary">
             {language === 'en' ? 'Checking price alerts…' : 'Проверяем уведомления о ценах…'}
           </p>}
@@ -397,6 +422,30 @@ function formatAlertDate(createdAt: string, language: 'ru' | 'en') {
   return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'ru-RU', {
     day: 'numeric',
     month: 'short',
+  }).format(date)
+}
+
+function PriceQuoteDisclosure({ quote, language }: { quote: CurrentPriceQuote; language: 'ru' | 'en' }) {
+  if (quote.status === 'unknown') return <p role="status" className="mt-2 text-text-muted">
+    {language === 'en' ? 'There is no fresh price for this item yet.' : 'Для этой позиции пока нет свежей цены.'}
+  </p>
+  return <p role="status" className="mt-2 text-text-secondary">
+    <span className="font-semibold text-text">{formatPriceAmount(quote.amount_minor, quote.currency, language)}</span>
+    <span className="mx-1.5 text-text-muted">·</span>
+    <a href={quote.source_url} target="_blank" rel="noreferrer" className="text-link underline underline-offset-2 hover:text-primary">{quote.source}</a>
+    <span className="mx-1.5 text-text-muted">·</span>
+    <span>{language === 'en' ? 'checked' : 'проверено'} {formatQuoteDate(quote.observed_at, language)}</span>
+  </p>
+}
+
+function formatQuoteDate(observedAt: string, language: 'ru' | 'en') {
+  const date = new Date(observedAt)
+  if (Number.isNaN(date.getTime())) return observedAt
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date)
 }
 
