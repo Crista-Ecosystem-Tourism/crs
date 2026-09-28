@@ -106,6 +106,7 @@ export function ChatPanel() {
             >
               <button
                 onClick={() => setTicketWidgetOpen(true)}
+                aria-describedby="ticket-partner-disclosure"
                 className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 font-sans text-xs font-medium text-ink-950 transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <Plane className="w-3.5 h-3.5" />
@@ -114,6 +115,9 @@ export function ChatPanel() {
                   {preferences?.origin_city} → {preferences?.city}
                 </span>
               </button>
+              <p id="ticket-partner-disclosure" className="mt-1 px-1 font-sans text-[11px] text-text-muted">
+                Партнёрское предложение · не влияет на маршрут
+              </p>
             </motion.div>
           )}
           {hasDestinationOnly && (

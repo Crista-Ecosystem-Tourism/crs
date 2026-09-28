@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { ExternalLink, X } from 'lucide-react'
 
 interface TicketWidgetProps {
   origin: string       // IATA code (e.g. "SVO")
@@ -103,6 +103,13 @@ export function TicketWidget({ origin, destination, isOpen, onClose }: TicketWid
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            <div id="ticket-widget-disclosure" className="flex items-start gap-2 border-b border-border/20 bg-panel px-5 py-3 text-xs leading-5 text-text-secondary">
+              <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden="true" />
+              <p>
+                Партнёрское предложение. Поиск и покупка проходят в сервисе партнёра: он показывает цены и условия. Этот переход не меняет ваш маршрут.
+              </p>
             </div>
 
             {/* Widget container */}
