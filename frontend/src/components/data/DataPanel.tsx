@@ -159,6 +159,9 @@ function PublishedMoscowArticle({ signedIn }: { signedIn: boolean }) {
         <p role="status" className="mt-2 font-sans text-xs text-text-muted">The English edition is not available yet; showing the published Russian version.</p>
       )}
       {summary && <p className="mt-3 max-w-[68ch] font-sans text-sm leading-6 text-text-secondary">{summary}</p>}
+      <a href={`/w/${encodeURIComponent(article.slug)}`} className="mt-3 inline-block font-sans text-sm font-semibold text-primary hover:underline">
+        {language === 'en' ? 'Open public article' : 'Открыть публичную статью'}
+      </a>
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
         {article.sources.map((source) => (
           <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-primary hover:underline">
@@ -451,6 +454,9 @@ export function DataPanel({ onBack }: DataPanelProps) {
           {publishedCountry?.slug === `country-${active.id}` && (
             <div className="mb-5">
               <p className="font-sans text-xs text-text-muted">Crista Wiki · {en ? 'version' : 'версия'} {publishedCountry.version_id} · {en ? 'license:' : 'лицензия:'} {publishedCountry.license}</p>
+              <a href={`/w/${encodeURIComponent(publishedCountry.slug)}`} className="mt-2 inline-block font-sans text-sm font-semibold text-primary hover:underline">
+                {en ? 'Open public article' : 'Открыть публичную статью'}
+              </a>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
                 {publishedCountry.sources.map((source) => (
                   <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-sans text-xs text-primary hover:underline">

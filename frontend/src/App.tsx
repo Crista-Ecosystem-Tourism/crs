@@ -10,6 +10,7 @@ import { SettingsPage } from '@/components/settings/SettingsPage'
 import { SupportPage } from '@/components/support/SupportPage'
 import { PublicTripMiniSite } from '@/components/trips/PublicTripMiniSite'
 import { PublicStarRoute } from '@/components/community/PublicStarRoute'
+import { PublicWikiArticle } from '@/components/data/PublicWikiArticle'
 
 function PublicTripRoute() {
   const { slug = '' } = useParams()
@@ -21,6 +22,11 @@ function PublicStarRoutePage() {
   return <PublicStarRoute routeId={routeId} />
 }
 
+function PublicWikiArticlePage() {
+  const { slug = '' } = useParams()
+  return <PublicWikiArticle slug={slug} />
+}
+
 function App() {
   return (
     <AppProvider>
@@ -29,6 +35,7 @@ function App() {
       <Routes>
         <Route path="/t/:slug" element={<PublicTripRoute />} />
         <Route path="/r/:routeId" element={<PublicStarRoutePage />} />
+        <Route path="/w/:slug" element={<PublicWikiArticlePage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<RegisterForm />} />
         <Route path="/profile" element={<ProfilePage />} />
