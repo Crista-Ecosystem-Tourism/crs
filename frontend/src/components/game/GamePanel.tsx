@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   ArrowLeft, Bell, Globe2, PiggyBank, Trophy,
   TrendingDown, MapPin, ChevronRight, BookOpenCheck, RotateCcw,
@@ -23,7 +23,10 @@ import { cn } from '@/lib/utils'
 import { getGameCopy } from '@/lib/gameCopy'
 import { getGamePassport, type GamePassport } from '@/api/gameApi'
 import { fetchSuitcaseWorkspace, mapGoalFromApi, mapTripFromApi } from '@/api/suitcaseApi'
-import { listPriceWatchAlerts, type PriceWatchAlert } from '@/api/priceApi'
+import {
+  listPriceWatchAlerts, listPriceWatches, savePriceWatch, unsubscribePriceWatch,
+  type PriceWatch, type PriceWatchAlert,
+} from '@/api/priceApi'
 import type { SuitcaseGoal, SuitcaseTrip } from '@/types/suitcase'
 
 type GamePanelProps = {
@@ -86,6 +89,14 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
   const [priceAlertsLoading, setPriceAlertsLoading] = useState(false)
   const [priceAlertsError, setPriceAlertsError] = useState(false)
   const [priceAlertsRefreshVersion, setPriceAlertsRefreshVersion] = useState(0)
+  const [priceWatches, setPriceWatches] = useState<PriceWatch[]>([])
+  const [priceWatchesLoading, setPriceWatchesLoading] = useState(false)
+  const [priceWatchesError, setPriceWatchesError] = useState<string | null>(null)
+  const [priceWatchSubject, setPriceWatchSubject] = useState('')
+  const [priceWatchAmount, setPriceWatchAmount] = useState('')
+  const [priceWatchCurrency, setPriceWatchCurrency] = useState('RUB')
+  const [priceWatchBusy, setPriceWatchBusy] = useState(false)
+  const [priceWatchError, setPriceWatchError] = useState<string | null>(null)
   const { setMainView, language } = useApp()
   const copy = getGameCopy(language)
 
@@ -159,7 +170,61 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
     return () => { current = false }
   }, [signedIn, priceAlertsRefreshVersion])
 
+  useEffect(() => {
+    if (!signedIn) {
+      setPriceWatches([])
+      setPriceWatchesLoading(false)
+      setPriceWatchesError(null)
+      return
+    }
+    let current = true
+    setPriceWatchesLoading(true)
+    setPriceWatchesError(null)
+    listPriceWatches()
+      .then((watches) => { if (current) setPriceWatches(watches) })
+      .catch(() => { if (current) setPriceWatchesError(language === 'en' ? 'Price watches are temporarily unavailable.' : 'Подписки на цены временно недоступны.') })
+      .finally(() => { if (current) setPriceWatchesLoading(false) })
+    return () => { current = false }
+  }, [language, priceAlertsRefreshVersion, signedIn])
+
   const activeSuitcaseTrips = suitcase?.trips.filter((trip) => !trip.isArchived) ?? []
+  const activePriceWatches = priceWatches.filter((watch) => watch.active)
+
+  const saveWatch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const subjectKey = priceWatchSubject.trim()
+    const amountMinor = parsePriceMinor(priceWatchAmount)
+    const currency = priceWatchCurrency.trim().toUpperCase()
+    if (!subjectKey || amountMinor === null || !/^[A-Z]{3}$/.test(currency)) {
+      setPriceWatchError(language === 'en' ? 'Enter an item, a non-negative amount, and a three-letter currency code.' : 'Укажите объект, неотрицательную сумму и трёхбуквенный код валюты.')
+      return
+    }
+    setPriceWatchBusy(true)
+    setPriceWatchError(null)
+    try {
+      await savePriceWatch({ subject_key: subjectKey, threshold_minor: amountMinor, currency })
+      setPriceWatchSubject('')
+      setPriceWatchAmount('')
+      setPriceAlertsRefreshVersion((version) => version + 1)
+    } catch (error) {
+      setPriceWatchError(error instanceof ApiError ? error.detail : (language === 'en' ? 'Could not save the price watch.' : 'Не удалось сохранить подписку на цену.'))
+    } finally {
+      setPriceWatchBusy(false)
+    }
+  }
+
+  const removeWatch = async (watchId: string) => {
+    setPriceWatchBusy(true)
+    setPriceWatchError(null)
+    try {
+      await unsubscribePriceWatch(watchId)
+      setPriceAlertsRefreshVersion((version) => version + 1)
+    } catch (error) {
+      setPriceWatchError(error instanceof ApiError ? error.detail : (language === 'en' ? 'Could not stop the price watch.' : 'Не удалось отключить подписку на цену.'))
+    } finally {
+      setPriceWatchBusy(false)
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -257,6 +322,29 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
             </div>
             <Bell className="mt-1 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           </div>
+          <form onSubmit={saveWatch} className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_130px_76px_auto]">
+            <label className="sr-only" htmlFor="price-watch-subject">{language === 'en' ? 'Item to track' : 'Что отслеживать'}</label>
+            <input id="price-watch-subject" value={priceWatchSubject} onChange={(event) => setPriceWatchSubject(event.target.value)} maxLength={200} placeholder={language === 'en' ? 'Item to track' : 'Что отслеживать'} className="h-10 rounded-md border border-hairline bg-panel px-3 font-sans text-sm text-text placeholder:text-text-muted" />
+            <label className="sr-only" htmlFor="price-watch-amount">{language === 'en' ? 'Target price' : 'Целевая цена'}</label>
+            <input id="price-watch-amount" value={priceWatchAmount} onChange={(event) => setPriceWatchAmount(event.target.value)} inputMode="decimal" placeholder={language === 'en' ? 'Target price' : 'Целевая цена'} className="h-10 rounded-md border border-hairline bg-panel px-3 font-sans text-sm text-text placeholder:text-text-muted" />
+            <label className="sr-only" htmlFor="price-watch-currency">{language === 'en' ? 'Currency' : 'Валюта'}</label>
+            <input id="price-watch-currency" value={priceWatchCurrency} onChange={(event) => setPriceWatchCurrency(event.target.value.toUpperCase())} maxLength={3} className="h-10 rounded-md border border-hairline bg-panel px-3 font-sans text-sm uppercase text-text" />
+            <button type="submit" disabled={priceWatchBusy} className="h-10 rounded-md bg-primary px-3 font-sans text-sm font-semibold text-white disabled:opacity-60">
+              {priceWatchBusy ? (language === 'en' ? 'Saving…' : 'Сохраняем…') : (language === 'en' ? 'Track' : 'Следить')}
+            </button>
+          </form>
+          {(priceWatchError || priceWatchesError) && <p role="alert" className="mt-2 font-sans text-xs text-error">{priceWatchError || priceWatchesError}</p>}
+          {priceWatchesLoading && <p role="status" className="mt-3 font-sans text-sm text-text-secondary">{language === 'en' ? 'Loading price watches…' : 'Загружаем подписки на цены…'}</p>}
+          {!priceWatchesLoading && activePriceWatches.length > 0 && <ul className="mt-3 flex flex-wrap gap-2">
+            {activePriceWatches.map((watch) => (
+              <li key={watch.id} className="flex items-center gap-2 rounded-full border border-hairline px-3 py-1.5 font-sans text-xs text-text-secondary">
+                <span>{watch.subject_key} · {formatPriceAmount(watch.threshold_minor, watch.currency, language)}</span>
+                <button type="button" onClick={() => void removeWatch(watch.id)} disabled={priceWatchBusy} className="text-link hover:text-primary disabled:opacity-60">
+                  {language === 'en' ? 'Stop' : 'Отключить'}
+                </button>
+              </li>
+            ))}
+          </ul>}
           {priceAlertsLoading && <p role="status" className="mt-3 font-sans text-sm text-text-secondary">
             {language === 'en' ? 'Checking price alerts…' : 'Проверяем уведомления о ценах…'}
           </p>}
@@ -308,6 +396,15 @@ function formatAlertDate(createdAt: string, language: 'ru' | 'en') {
     day: 'numeric',
     month: 'short',
   }).format(date)
+}
+
+function parsePriceMinor(value: string): number | null {
+  const match = value.trim().match(/^(0|[1-9]\d*)(?:[.,](\d{0,2}))?$/)
+  if (!match) return null
+  const whole = Number(match[1])
+  const fractional = Number(`${match[2] ?? ''}00`.slice(0, 2))
+  const amountMinor = whole * 100 + fractional
+  return Number.isSafeInteger(amountMinor) ? amountMinor : null
 }
 
 function DemoGamePanel({ onBack, userName }: GamePanelProps & { userName: string | null }) {
