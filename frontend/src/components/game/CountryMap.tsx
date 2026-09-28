@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, GeoJSON, useMap } from 'react-leaflet'
+import { MapContainer, GeoJSON, ZoomControl, useMap } from 'react-leaflet'
 import { latLngBounds, type Layer, type PathOptions } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 import { Loader2 } from 'lucide-react'
 import type { GameCountry } from '@/mocks/game'
 import { gameCountryName } from '@/mocks/game'
 import { useApp } from '@/context/AppContext'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { getGameCopy } from '@/lib/gameCopy'
 import 'leaflet/dist/leaflet.css'
 
@@ -27,7 +28,7 @@ interface CountryMapProps {
 }
 
 /** Границы страны по её городам, чтобы карта открылась на нужном месте */
-function FitCountry({ country }: { country: GameCountry }) {
+function FitCountry({ country, animate }: { country: GameCountry; animate: boolean }) {
   const map = useMap()
   const done = useRef('')
 
@@ -36,8 +37,8 @@ function FitCountry({ country }: { country: GameCountry }) {
     done.current = country.iso
     if (country.cities.length === 0) return
     const bounds = latLngBounds(country.cities.map((c) => c.coordinates))
-    map.fitBounds(bounds.pad(1.2), { animate: false })
-  }, [country, map])
+    map.fitBounds(bounds.pad(1.2), { animate, duration: animate ? 0.35 : undefined })
+  }, [animate, country, map])
 
   return null
 }
@@ -45,6 +46,7 @@ function FitCountry({ country }: { country: GameCountry }) {
 export function CountryMap({ country, visitedRegionNames }: CountryMapProps) {
   const { language } = useApp()
   const copy = getGameCopy(language)
+  const reducedMotion = useReducedMotion()
   const countryName = gameCountryName(country, language)
   const [data, setData] = useState<RegionCollection | null>(null)
 
@@ -134,10 +136,18 @@ export function CountryMap({ country, visitedRegionNames }: CountryMapProps) {
       zoom={4}
       zoomControl={false}
       attributionControl={false}
+      zoomAnimation={!reducedMotion}
+      fadeAnimation={!reducedMotion}
+      markerZoomAnimation={!reducedMotion}
       className="h-full w-full"
       style={{ background: 'transparent' }}
     >
-      <FitCountry country={country} />
+      <FitCountry country={country} animate={!reducedMotion} />
+      <ZoomControl
+        position="topright"
+        zoomInTitle={copy.mapZoomIn}
+        zoomOutTitle={copy.mapZoomOut}
+      />
       <GeoJSON key={country.iso} data={regions} style={styleFor} onEachFeature={onEach} />
     </MapContainer>
   )

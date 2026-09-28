@@ -1,10 +1,11 @@
 import { useMemo, useRef } from 'react'
-import { MapContainer, GeoJSON, useMap } from 'react-leaflet'
+import { MapContainer, GeoJSON, ZoomControl, useMap } from 'react-leaflet'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, Geometry } from 'geojson'
 import worldData from '@/data/world-countries.json'
 import { openedCountryIso } from '@/mocks/game'
 import { useApp } from '@/context/AppContext'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { getGameCopy } from '@/lib/gameCopy'
 import 'leaflet/dist/leaflet.css'
 
@@ -44,6 +45,7 @@ function FitWorld() {
 export function WorldMap({ progressByIso, selectedIso, onSelect }: WorldMapProps) {
   const { language } = useApp()
   const copy = getGameCopy(language)
+  const reducedMotion = useReducedMotion()
   const styleFor = useMemo(
     () =>
       (feature?: Feature<Geometry, CountryProps>): PathOptions => {
@@ -114,10 +116,18 @@ export function WorldMap({ progressByIso, selectedIso, onSelect }: WorldMapProps
       zoomControl={false}
       attributionControl={false}
       worldCopyJump={false}
+      zoomAnimation={!reducedMotion}
+      fadeAnimation={!reducedMotion}
+      markerZoomAnimation={!reducedMotion}
       className="h-full w-full"
       style={{ background: 'transparent' }}
     >
       <FitWorld />
+      <ZoomControl
+        position="topright"
+        zoomInTitle={copy.mapZoomIn}
+        zoomOutTitle={copy.mapZoomOut}
+      />
       <GeoJSON
         // ключ заставляет перерисовать стили при изменении прогресса
         key={`${selectedIso ?? 'none'}`}

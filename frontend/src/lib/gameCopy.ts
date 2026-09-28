@@ -65,6 +65,8 @@ interface GameCopy {
   categoryNames: Record<QuestCategory, string>
   noRegions: (country: string) => string
   worldMapBlankSpot: string
+  mapZoomIn: string
+  mapZoomOut: string
   passportOwner: string
   document: string
   countriesLabel: string
@@ -265,6 +267,7 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
     questCategories: 'Категории', noRegions: (country) => `Регионы для страны ${country} пока не размечены`,
     categoryNames: { sights: 'Достопримечательности', food: 'Кухня', traditions: 'Традиции' },
     worldMapBlankSpot: 'Белое пятно: маршрут сюда ещё не строили',
+    mapZoomIn: 'Приблизить карту', mapZoomOut: 'Отдалить карту',
     passportOwner: 'Владелец', document: 'Документ', countriesLabel: 'Стран', stampsLabel: 'Штампов',
     countrySeals: 'Печати за закрытые страны', visitMarks: 'Отметки о посещении', page: (number) => `Страница ${number}`,
     share: 'Поделиться', emptyPage: 'Страница пока чистая', firstStampHint: 'Закройте все квесты города, чтобы получить первый штамп.',
@@ -393,6 +396,7 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
     questCategories: 'Categories', noRegions: (country) => `Regions for ${country} are not mapped yet`,
     categoryNames: { sights: 'Sightseeing', food: 'Food', traditions: 'Traditions' },
     worldMapBlankSpot: 'Undiscovered: no itinerary has been planned here yet',
+    mapZoomIn: 'Zoom in', mapZoomOut: 'Zoom out',
     passportOwner: 'Holder', document: 'Document', countriesLabel: 'Countries', stampsLabel: 'Stamps',
     countrySeals: 'Seals for completed countries', visitMarks: 'Visit stamps', page: (number) => `Page ${number}`,
     share: 'Share', emptyPage: 'This page is still blank', firstStampHint: 'Complete every quest in a city to earn your first stamp.',
