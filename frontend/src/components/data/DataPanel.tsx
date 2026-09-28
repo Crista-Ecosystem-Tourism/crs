@@ -315,6 +315,9 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
           <p className="mt-1 font-sans text-xs text-text-muted">
             {en ? 'Published lessons:' : 'Опубликованные уроки:'} {city.published_quest_count}/{city.required_quest_count} · {en ? 'With sources:' : 'С источниками:'} {city.sourced_quest_count}/{city.published_quest_count}
           </p>
+          <p className="mt-1 font-sans text-xs text-text-muted">
+            {en ? 'Published Wiki:' : 'Опубликованная Wiki:'} {city.wiki_published ? city.wiki_license : (en ? 'missing' : 'нет')}
+          </p>
         </div>
         <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>
       </div>)}
