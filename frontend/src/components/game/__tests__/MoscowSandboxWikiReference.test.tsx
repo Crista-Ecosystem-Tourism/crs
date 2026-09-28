@@ -40,15 +40,15 @@ describe('MoscowSandbox lesson Wiki references', () => {
         fact: { text: 'Факт', source_url: 'https://example.test/fact', source_label: 'Первоисточник' },
         question: { id: 'q1', text: 'Вопрос?', options: [{ id: 'a', label: 'Ответ' }] },
         explanation: 'Объяснение',
-        wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v1' },
+        wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v2' },
       }],
       drill: { title: 'Правда или миф', intro: 'Инструкция на русском', statements: [{ id: 's1', text: 'Русское утверждение' }] }, matching: null, timeline: null, word_blocks: null,
       price_slider: null, story: null, photo_scanner: null,
-      wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v1' },
+      wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v2' },
       practice_recovery: { available: false, used_today: false, amount: 1 },
     })
     getWikiArticleVersionMock.mockResolvedValue({
-      version_id: 'wiki-moscow-v1', slug: 'moscow', title: 'Москва',
+      version_id: 'wiki-moscow-v2', slug: 'moscow', title: 'Москва',
       body: { summary: 'Контекст Москвы.' }, sources: [], license: 'CC BY 4.0', published_at: null,
     })
   })
@@ -57,7 +57,7 @@ describe('MoscowSandbox lesson Wiki references', () => {
     render(<MoscowSandbox signedIn refreshKey={0} />)
     const lesson = await screen.findByText(/1\. Красная площадь/)
     expect(lesson).toBeTruthy()
-    const referenceLink = screen.getByRole('link', { name: /Общий контекст города · Wiki wiki-moscow-v1/ })
+    const referenceLink = screen.getByRole('link', { name: /Общий контекст города · Wiki wiki-moscow-v2/ })
     expect(referenceLink.getAttribute('href')).toBe('#moscow-wiki-article')
     expect(await screen.findByText('Контекст Москвы.')).toBeTruthy()
   })
@@ -87,7 +87,7 @@ describe('MoscowSandbox lesson Wiki references', () => {
         fact: { text: 'In older Russian, krasny meant beautiful.', source_url: 'https://example.test/fact', source_label: 'Moscow City Government' },
         question: { id: 'red-square-name', text: 'What did krasny mean?', options: [{ id: 'beautiful', label: 'Beautiful' }] },
         explanation: 'In older Russian, krasny meant beautiful.',
-        wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v1' },
+        wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v2' },
       }],
       drill: { title: 'True or Myth', intro: 'English instruction', statements: [{ id: 's1', text: 'An English statement' }] },
       matching: null, timeline: null, word_blocks: null, price_slider: null,
@@ -97,7 +97,7 @@ describe('MoscowSandbox lesson Wiki references', () => {
         fact: 'A unique English story-card fact.', source_label: 'Moscow City Government',
         source_url: 'https://example.test/story', note: 'Check the primary source.',
       },
-      photo_scanner: null, wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v1' },
+      photo_scanner: null, wiki_reference: { slug: 'moscow', version_id: 'wiki-moscow-v2' },
       practice_recovery: { available: false, used_today: false, amount: 1 },
     })
 
@@ -120,11 +120,11 @@ describe('MoscowSandbox lesson Wiki references', () => {
       city_stamp: { key: 'moscow-city-explorer', title: 'Moscow stamp', earned_at: '2026-09-24' },
       lessons: [], drill: null, matching: null, timeline: null, word_blocks: null,
       price_slider: null, story: null, photo_scanner: null,
-      wiki_reference: { slug: 'moscow-en', version_id: 'wiki-moscow-en-v1' },
+        wiki_reference: { slug: 'moscow-en', version_id: 'wiki-moscow-en-v2' },
       practice_recovery: { available: false, used_today: false, amount: 1 },
     })
     getWikiArticleVersionMock.mockResolvedValueOnce({
-      version_id: 'wiki-moscow-en-v1', slug: 'moscow-en', title: 'Moscow',
+      version_id: 'wiki-moscow-en-v2', slug: 'moscow-en', title: 'Moscow',
       body: {
         summary: 'Moscow’s English overview.',
         sections: [{ title: 'The Kremlin and Red Square', text: 'The historic heart of the city.' }],
