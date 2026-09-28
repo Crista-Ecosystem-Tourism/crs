@@ -35,6 +35,7 @@ export type GameCityReadiness = {
   wiki_published: boolean
   wiki_license: string | null
   wiki_provenance_complete: boolean
+  readiness_blockers?: Array<'city_unpublished' | 'lesson_count' | 'lesson_sources' | 'wiki_missing' | 'wiki_license' | 'wiki_provenance'>
   status: 'ready' | 'draft'
 }
 

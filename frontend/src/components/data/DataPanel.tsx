@@ -309,6 +309,18 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const { language } = useApp()
   const en = language === 'en'
+  const blockerLabel = (blocker: NonNullable<GameCityReadiness['readiness_blockers']>[number]) => {
+    const labels = en
+      ? {
+          city_unpublished: 'publish the city', lesson_count: 'add published lessons', lesson_sources: 'add lesson sources',
+          wiki_missing: 'publish a city Wiki', wiki_license: 'add the Wiki licence', wiki_provenance: 'complete source provenance',
+        }
+      : {
+          city_unpublished: 'опубликовать город', lesson_count: 'добавить опубликованные уроки', lesson_sources: 'добавить источники уроков',
+          wiki_missing: 'опубликовать Wiki города', wiki_license: 'указать лицензию Wiki', wiki_provenance: 'завершить провенанс источников',
+        }
+    return labels[blocker]
+  }
 
   useEffect(() => {
     if (!isEditor) return
@@ -337,6 +349,9 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
           <p className="mt-1 font-sans text-xs text-text-muted">
             {en ? 'Source provenance:' : 'Провенанс источников:'} {city.wiki_provenance_complete ? (en ? 'complete' : 'полный') : (en ? 'needs review' : 'нужна проверка')}
           </p>
+          {(city.readiness_blockers ?? []).length > 0 && <p className="mt-2 font-sans text-xs text-accent-soft">
+            {en ? 'To make ready:' : 'Для готовности:'} {(city.readiness_blockers ?? []).map(blockerLabel).join(' · ')}
+          </p>}
         </div>
         <Chip size="sm" variant={city.status === 'ready' ? 'active' : 'accent'}>{city.status === 'ready' ? (en ? 'Ready' : 'Готов') : (en ? 'Draft' : 'Черновик')}</Chip>
       </div>)}
