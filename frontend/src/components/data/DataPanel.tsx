@@ -346,6 +346,9 @@ function CityReadiness({ isEditor }: { isEditor: boolean }) {
           <p className="mt-1 font-sans text-xs text-text-muted">
             {en ? 'Published Wiki:' : 'Опубликованная Wiki:'} {city.wiki_published ? city.wiki_license : (en ? 'missing' : 'нет')}
           </p>
+          {city.wiki_reference && <a href={`/w/${city.wiki_reference.slug}?language=${language}`} className="mt-1 inline-block font-sans text-xs text-primary hover:underline">
+            {en ? `Open Wiki ${city.wiki_reference.version_id}` : `Открыть Wiki ${city.wiki_reference.version_id}`}
+          </a>}
           <p className="mt-1 font-sans text-xs text-text-muted">
             {en ? 'Source provenance:' : 'Провенанс источников:'} {city.wiki_provenance_complete ? (en ? 'complete' : 'полный') : (en ? 'needs review' : 'нужна проверка')}
           </p>
