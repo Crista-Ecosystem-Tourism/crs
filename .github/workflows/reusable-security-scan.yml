@@ -22,11 +22,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # trivy-action закреплён по SHA коммита (теги action'а переписывались при
+      # компрометации в марте 2026), версия Trivy задана явно: старые релизы
+      # (v0.27–v0.69.1) удалены из aquasecurity/trivy, и install.sh на них падает.
+
       # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) → Step Summary. Не валит CI.
       - name: Trivy — full report → Step Summary
-        uses: aquasecurity/trivy-action@v0.32.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         continue-on-error: true
         with:
+          version: v0.76.1
           scan-type: fs
           scan-ref: .
           format: table
@@ -45,8 +50,9 @@ jobs:
 
       # 2) Блокирующий гейт — только фиксируемые CRITICAL/HIGH. Валит CI.
       - name: Trivy — blocking gate (CRITICAL/HIGH, fixable)
-        uses: aquasecurity/trivy-action@v0.32.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.76.1
           scan-type: fs
           scan-ref: .
           format: table
