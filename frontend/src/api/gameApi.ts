@@ -19,6 +19,8 @@ export type GameDailyProgress = {
 
 export type GamePassport = {
   profile: GameProfile
+  /** Present since the passport started reporting today's goal; older servers omit it. */
+  daily?: GameDailyProgress
   stamps: Array<{ key: string; title: string; earned_at: string }>
   cities: Array<{ id: string; name: string; completed_quests: number; required_quest_count: number }>
   routes: Array<{ id: string; name: string; destination: string; updated_at: string | null }>

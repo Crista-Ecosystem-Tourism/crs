@@ -139,7 +139,7 @@ export const gameCountries: GameCountry[] = [
     name: 'Грузия',
     nameEn: 'Georgia',
     flag: '🇬🇪',
-    opened: true,
+    opened: false, // GDD 3.2 §2.2: only Russia is playable before v2
     daily: {
       title: 'Фраза дня: «Гамарджоба» это привет по-грузински',
       hint: 'Мини-квест, 60 секунд',
@@ -183,7 +183,7 @@ export const gameCountries: GameCountry[] = [
     name: 'Турция',
     nameEn: 'Türkiye',
     flag: '🇹🇷',
-    opened: true,
+    opened: false, // GDD 3.2 §2.2: only Russia is playable before v2
     daily: {
       title: 'Фраза дня: «Merhaba» это здравствуйте по-турецки',
       hint: 'Мини-квест, 60 секунд',
@@ -216,7 +216,7 @@ export const gameCountries: GameCountry[] = [
     name: 'Бельгия',
     nameEn: 'Belgium',
     flag: '🇧🇪',
-    opened: true,
+    opened: false, // GDD 3.2 §2.2: only Russia is playable before v2
     daily: {
       title: 'Слово дня: «gezellig» это уют, которому нет точного перевода',
       hint: 'Мини-квест, 60 секунд',

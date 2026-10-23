@@ -88,6 +88,7 @@ describe('Suitcase API row mappers', () => {
       impressions: 'Great trip',
       photos: ['photo.jpg'],
       isArchived: true,
+      isHistorical: false,
       createdAt: '',
     })
 

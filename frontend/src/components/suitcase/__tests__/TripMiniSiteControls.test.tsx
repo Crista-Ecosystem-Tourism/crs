@@ -72,6 +72,12 @@ describe('TripMiniSiteControls', () => {
 
   it('keeps the current link live until the owner reviews and consents to a refreshed snapshot', async () => {
     const publishedStamp = { key: 'moscow-starter', title: 'Moscow explorer', earned_at: '2026-09-20T10:00:00Z', fact: 'A verified fact.', source_label: 'Source', source_url: 'https://source.example/fact' }
+    // A public refresh passes the same quality gate as the first public publication.
+    const publicSnapshot = {
+      ...sampleSnapshot,
+      summary: 'A quiet week of slow mornings, long walks between Roman piazzas and evenings spent by the fountains.',
+      points: [...sampleSnapshot.points, { latitude: 41.89, longitude: 12.49, name: 'Colosseum', note: '', photos: [] }],
+    }
     getPassport.mockResolvedValueOnce({
       profile: { xp: 20, energy: 5, streak: 1 },
       stamps: [{ key: publishedStamp.key, title: publishedStamp.title, earned_at: publishedStamp.earned_at }],
@@ -82,15 +88,17 @@ describe('TripMiniSiteControls', () => {
       slug: 'old-link-123456789012345678901234',
       visibility: 'public',
       consented_at: '2026-09-25T12:00:00Z',
-      preview_snapshot: sampleSnapshot,
-      published_snapshot: { ...sampleSnapshot, game_stamps: [publishedStamp] },
+      completed_at: '2026-09-25T12:00:00Z',
+      preview_snapshot: publicSnapshot,
+      published_snapshot: { ...publicSnapshot, game_stamps: [publishedStamp] },
     })
     complete.mockResolvedValueOnce({
       published: true,
       slug: 'old-link-123456789012345678901234',
       visibility: 'public',
       consented_at: '2026-09-25T12:00:00Z',
-      preview_snapshot: { ...sampleSnapshot, game_stamps: [publishedStamp] },
+      completed_at: '2026-09-25T12:00:00Z',
+      preview_snapshot: { ...publicSnapshot, game_stamps: [publishedStamp] },
     })
     publish.mockResolvedValueOnce({ published: true, slug: 'new-link-123456789012345678901234', visibility: 'public', consented_at: '2026-09-26T12:00:00Z' })
     render(<TripMiniSiteControls tripId="trip-refresh" />)

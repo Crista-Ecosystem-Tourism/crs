@@ -52,7 +52,7 @@ export function MoscowBoss({
         setView('error')
       })
     return () => { active = false }
-  }, [refreshKey, signedIn, language])
+  }, [refreshKey, signedIn, language, copy.moscowBoss.retry])
 
   const submit = async () => {
     if (!state || view === 'answering' || state.completed) return

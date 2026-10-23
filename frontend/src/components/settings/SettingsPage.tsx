@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, User, ChevronRight, Palette, Bell, AlertTriangle,
   Moon, Sun, Globe, LogOut, Trash2, Shield, Link2, Check,
@@ -158,8 +158,7 @@ export function SettingsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   if (!user) {
-    navigate('/login')
-    return null
+    return <Navigate to="/login" replace />
   }
 
   const handleLogout = () => {

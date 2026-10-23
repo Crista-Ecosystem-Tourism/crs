@@ -56,6 +56,27 @@ interface HomeCopy {
   destinationsHeading: string
   seeAll: string
   tripPrompt: (destination: string, country: string) => string
+  live: {
+    signInTitle: string
+    signInText: string
+    signIn: string
+    loading: string
+    loadFailed: string
+    retry: string
+    xp: string
+    streak: (days: number) => string
+    streakLabel: string
+    stamps: string
+    cityFocus: string
+    cityProgress: (done: number, total: number) => string
+    noCities: string
+    today: string
+    dailyGoal: (done: number, goal: number) => string
+    goalReached: string
+    energy: (value: number) => string
+    savingsGoal: (title: string) => string
+    savingsProgress: (current: number, total: number) => string
+  }
 }
 
 function russianCountryCount(count: number) {
@@ -68,6 +89,19 @@ function russianCountryCount(count: number) {
       : remainder10 >= 2 && remainder10 <= 4
         ? 'страны'
         : 'стран'
+  return `${count} ${unit}`
+}
+
+function russianDayCount(count: number) {
+  const remainder100 = count % 100
+  const remainder10 = count % 10
+  const unit = remainder100 >= 11 && remainder100 <= 14
+    ? 'дней'
+    : remainder10 === 1
+      ? 'день'
+      : remainder10 >= 2 && remainder10 <= 4
+        ? 'дня'
+        : 'дней'
   return `${count} ${unit}`
 }
 
@@ -138,6 +172,27 @@ const homeCopy: Record<InterfaceLanguage, HomeCopy> = {
     destinationsHeading: 'Куда едут сейчас',
     seeAll: 'Смотреть все',
     tripPrompt: (destination: string, country: string) => `Хочу поехать в ${destination}, ${country}`,
+    live: {
+      signInTitle: 'Ваш путь по России',
+      signInText: 'Войдите, чтобы стрик, XP и штампы сохранялись на сервере и были видны на всех устройствах.',
+      signIn: 'Войти',
+      loading: 'Загружаю прогресс…',
+      loadFailed: 'Не удалось загрузить прогресс.',
+      retry: 'Повторить',
+      xp: 'XP',
+      streak: russianDayCount,
+      streakLabel: 'Стрик по дням',
+      stamps: 'Штампов в паспорте',
+      cityFocus: 'Фокус города',
+      cityProgress: (done: number, total: number) => `Пройдено ${done} из ${total} точек`,
+      noCities: 'Опубликованные города появятся здесь.',
+      today: 'Сегодня',
+      dailyGoal: (done: number, goal: number) => `Цель дня: ${Math.min(done, goal)} из ${goal} уроков`,
+      goalReached: 'Цель дня выполнена. Стрик засчитан.',
+      energy: (value: number) => `Энергия ${value}/5`,
+      savingsGoal: (title: string) => `Копилка: ${title}`,
+      savingsProgress: (current: number, total: number) => `${current.toLocaleString('ru-RU')} из ${total.toLocaleString('ru-RU')}`,
+    },
   },
   en: {
     composerLabel: 'Describe the trip you want to plan',
@@ -197,6 +252,27 @@ const homeCopy: Record<InterfaceLanguage, HomeCopy> = {
     destinationsHeading: 'Popular destinations',
     seeAll: 'See all',
     tripPrompt: (destination: string, country: string) => `I want to travel to ${destination}, ${country}`,
+    live: {
+      signInTitle: 'Your journey across Russia',
+      signInText: 'Sign in so your streak, XP and stamps are saved on the server and follow you to every device.',
+      signIn: 'Sign in',
+      loading: 'Loading progress…',
+      loadFailed: 'Could not load your progress.',
+      retry: 'Retry',
+      xp: 'XP',
+      streak: (days: number) => `${days} ${days === 1 ? 'day' : 'days'}`,
+      streakLabel: 'Daily streak',
+      stamps: 'Passport stamps',
+      cityFocus: 'City focus',
+      cityProgress: (done: number, total: number) => `${done} of ${total} stops completed`,
+      noCities: 'Published cities will appear here.',
+      today: 'Today',
+      dailyGoal: (done: number, goal: number) => `Daily goal: ${Math.min(done, goal)} of ${goal} lessons`,
+      goalReached: 'Daily goal complete. Your streak counts today.',
+      energy: (value: number) => `Energy ${value}/5`,
+      savingsGoal: (title: string) => `Savings: ${title}`,
+      savingsProgress: (current: number, total: number) => `${current.toLocaleString('en-US')} of ${total.toLocaleString('en-US')}`,
+    },
   },
 }
 

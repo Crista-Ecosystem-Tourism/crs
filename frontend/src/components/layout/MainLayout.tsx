@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { AppFrame } from './AppFrame'
-import { MobileTabBar } from './MobileTabBar'
+import { MobileChatMapSwitch } from './MobileChatMapSwitch'
+import { PrimaryTabBar } from './PrimaryTabBar'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { ChatListPanel } from '@/components/chat/ChatListPanel'
 import { TravelMap } from '@/components/map/TravelMap'
@@ -48,8 +49,9 @@ export function MainLayout() {
       <AppFrame>
         <Sidebar />
 
+        <div className="flex min-w-0 flex-1 flex-col">
         {/* Main Content Area */}
-        <main className="flex-1 relative h-full min-w-0">
+        <main className="relative min-h-0 min-w-0 flex-1">
             {isHome && mainView === 'chatList' ? (
               <div className="w-full h-full crista-view">
                 <ChatListPanel onBack={() => setMainView('home')} />
@@ -95,6 +97,7 @@ export function MainLayout() {
                 {/* Mobile layout */}
                 {breakpoint === 'mobile' && (
                   <div className="flex flex-col w-full h-full">
+                    <MobileChatMapSwitch />
                     {/* Content area */}
                     <div className="relative flex-1 min-h-0">
                       {/* Chat */}
@@ -133,8 +136,6 @@ export function MainLayout() {
                       </AnimatePresence>
                     </div>
 
-                    {/* Tab bar — part of flex flow, not floating */}
-                    <MobileTabBar />
                   </div>
                 )}
 
@@ -191,6 +192,8 @@ export function MainLayout() {
               </div>
             )}
         </main>
+        <PrimaryTabBar className="lg:hidden" />
+        </div>
       </AppFrame>
 
       {/* Modals */}

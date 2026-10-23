@@ -36,7 +36,7 @@ export function MoscowPath({
         setError(language === 'ru' && requestError instanceof ApiError ? requestError.message : copy.moscowPathLoadFailed)
       })
     return () => { active = false }
-  }, [refreshKey, signedIn, language])
+  }, [refreshKey, signedIn, language, copy.moscowPathLoadFailed])
 
   if (!signedIn || !state) {
     return error ? (

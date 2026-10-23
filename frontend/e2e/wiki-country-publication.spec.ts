@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
 
+// Keep the smoke suite hermetic: a slow third-party font host must not hold up page load.
+test.beforeEach(async ({ page }) => {
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort())
+})
+
 test('country article shows its published version and source links', async ({ page }) => {
   await page.route('**/wiki/articles/**', async (route) => {
     const slug = new URL(route.request().url()).pathname.split('/').at(-1)

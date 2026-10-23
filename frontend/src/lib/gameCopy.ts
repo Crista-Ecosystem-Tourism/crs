@@ -210,7 +210,7 @@ interface GameCopy {
     almost: string
   }
   onboarding: {
-    steps: [string, string, string, string]
+    steps: [string, string, string, string, string]
     signInHeading: string
     signInBody: string
     loading: string
@@ -224,8 +224,18 @@ interface GameCopy {
     stepsAria: string
     completed: (stamp: string) => string
     contentLanguageNote: string
-    intro: (name: string) => string
+    welcomeSpeech: string
+    countrySpeech: string
+    next: string
+    skipIntro: string
+    countryAvailable: string
+    countryCoverage: string
+    countrySoon: string
+    countrySoonNote: (country: string) => string
+    lockedCountries: [string, string, string, string]
     selectRussia: string
+    arrivalSpeech: string
+    hologramLabel: string
     arrivalHeading: string
     arrivalBody: (scene: string) => string
     arrivalAction: string
@@ -354,15 +364,22 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
       accurate: 'Точно!', almost: 'Почти.',
     },
     onboarding: {
-      steps: ['Встреча', 'Москва', 'История', 'Квест'],
+      steps: ['Крис', 'Страна', 'Москва', 'История', 'Квест'],
       signInHeading: 'Первое путешествие ждёт', signInBody: 'Войдите в аккаунт, чтобы пройти Москву с Крисом и сохранить XP со штампом.',
       loading: 'Загружаем маршрут Криса…', unavailable: (error) => `Игровой маршрут пока недоступен: ${error}.`, retry: 'попробуйте обновить страницу',
       correctAward: (xp) => `Верно! +${xp} XP`, alreadyStamped: 'Верно — этот штамп уже в паспорте.', incorrect: 'Почти! Одна энергия потрачена — попробуйте ещё раз.',
       answerFailed: 'Ответ не сохранился. Попробуйте ещё раз.', goal: (done, goal, reached) => `Цель на сегодня: ${done}/${goal} точек${reached ? ' — выполнена' : ''}.`,
       stepsAria: 'Шаги первого путешествия', completed: (stamp) => `${stamp} уже в паспорте. Москва открыта для следующих квестов.`,
       contentLanguageNote: 'Текст истории и вопросы сейчас доступны только на русском языке — показан оригинал.',
-      intro: (name) => `${name} покажет, как за две минуты открыть новую часть мира. Начнём с России.`,
-      selectRussia: 'Выбрать Россию', arrivalHeading: 'Москва на горизонте',
+      welcomeSpeech: 'Привет, я Крис! 🦝 Моя задача — сделать так, чтобы ты исследовал весь мир всего за 2 минуты в день. Мы превратим изучение планеты в лёгкую ежедневную привычку. Считай это твоим Duolingo для путешествий.',
+      countrySpeech: 'Правила простые: проходишь быстрые квесты, держишь ежедневный стрик и собираешь штампы в свой Тревел-паспорт. Начнём прямо сейчас! Выбери страну, с которой начнём.',
+      next: 'Дальше', skipIntro: 'Пропустить вступление',
+      countryAvailable: 'Доступно', countryCoverage: 'Все регионы, края и области РФ', countrySoon: 'Скоро',
+      countrySoonNote: (country) => `${country} откроется во второй версии. Пока начнём с России.`,
+      lockedCountries: ['США', 'Япония', 'Великобритания', 'Китай'],
+      selectRussia: 'Выбрать Россию',
+      arrivalSpeech: 'Смотри, это твоя первая точка на карте! Над кнопкой парит голограмма с обложкой локации. Нажми, чтобы запустить свой первый квест!',
+      hologramLabel: 'Голограмма первой точки', arrivalHeading: 'Москва на горизонте',
       arrivalBody: (scene) => `Первая остановка — ${scene}. Здесь начинается путь, который сохранится в твоём паспорте.`,
       arrivalAction: 'Узнать историю места', factAction: 'Пройти мини-квест', energyEmpty: 'Энергия закончилась — она восстановится завтра.', sourceFallback: 'Правительство Москвы',
     },
@@ -486,15 +503,22 @@ const copy: Record<InterfaceLanguage, GameCopy> = {
       accurate: 'That’s right!', almost: 'Not quite.',
     },
     onboarding: {
-      steps: ['Meet Chris', 'Moscow', 'A story', 'Quest'],
+      steps: ['Meet Chris', 'Country', 'Moscow', 'A story', 'Quest'],
       signInHeading: 'Your first trip is waiting', signInBody: 'Sign in to explore Moscow with Chris and save your XP and stamp.',
       loading: 'Loading Chris’s route…', unavailable: (error) => `The game route is currently unavailable: ${error}.`, retry: 'try refreshing the page',
       correctAward: (xp) => `Correct! +${xp} XP`, alreadyStamped: 'Correct — this stamp is already in your passport.', incorrect: 'Not quite! One energy used — try again.',
       answerFailed: 'Your answer could not be saved. Please try again.', goal: (done, goal, reached) => `Today’s goal: ${done}/${goal} stops${reached ? ' — complete' : ''}.`,
       stepsAria: 'First trip steps', completed: (stamp) => `${stamp} is already in your passport. Moscow is open for more quests.`,
       contentLanguageNote: 'The story text and questions are currently available only in Russian; the original is shown.',
-      intro: (name) => `${name} will show you how to unlock a new part of the world in two minutes. Let’s start with Russia.`,
-      selectRussia: 'Choose Russia', arrivalHeading: 'Moscow ahead',
+      welcomeSpeech: 'Hi, I’m Chris! 🦝 My job is to help you explore the whole world in just 2 minutes a day. We’ll turn discovering the planet into an easy daily habit. Think of it as your Duolingo for travel.',
+      countrySpeech: 'The rules are simple: play quick quests, keep your daily streak and collect stamps in your Travel Passport. Let’s start right now! Pick the country we begin with.',
+      next: 'Next', skipIntro: 'Skip intro',
+      countryAvailable: 'Available', countryCoverage: 'Every region of Russia', countrySoon: 'Soon',
+      countrySoonNote: (country) => `${country} opens in version 2. Let’s start with Russia for now.`,
+      lockedCountries: ['USA', 'Japan', 'United Kingdom', 'China'],
+      selectRussia: 'Choose Russia',
+      arrivalSpeech: 'Look, this is your first point on the map! A hologram with the location cover floats above the button. Tap to launch your first quest!',
+      hologramLabel: 'First point hologram', arrivalHeading: 'Moscow ahead',
       arrivalBody: (scene) => `Your first stop is ${scene}. This is where a journey saved to your passport begins.`,
       arrivalAction: 'Discover this place', factAction: 'Play the mini quest', energyEmpty: 'No energy left — it will recharge tomorrow.', sourceFallback: 'Moscow Government',
     },

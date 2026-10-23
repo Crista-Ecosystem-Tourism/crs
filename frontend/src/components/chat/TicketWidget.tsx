@@ -42,21 +42,22 @@ export function TicketWidget({ origin, destination, isOpen, onClose }: TicketWid
   const scriptRef = useRef<HTMLScriptElement | null>(null)
 
   useEffect(() => {
-    if (!isOpen || !containerRef.current) return
+    const container = containerRef.current
+    if (!isOpen || !container) return
 
     // Clean previous widget
     if (scriptRef.current) {
       scriptRef.current.remove()
       scriptRef.current = null
     }
-    containerRef.current.innerHTML = ''
+    container.innerHTML = ''
 
     // Create and inject script
     const script = document.createElement('script')
     script.src = buildWidgetUrl(origin, destination)
     script.async = true
     script.charset = 'utf-8'
-    containerRef.current.appendChild(script)
+    container.appendChild(script)
     scriptRef.current = script
 
     return () => {
@@ -64,9 +65,7 @@ export function TicketWidget({ origin, destination, isOpen, onClose }: TicketWid
         scriptRef.current.remove()
         scriptRef.current = null
       }
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
-      }
+      container.innerHTML = ''
     }
   }, [isOpen, origin, destination])
 

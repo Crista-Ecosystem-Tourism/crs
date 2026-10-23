@@ -44,8 +44,10 @@ export function ProfilePage() {
   const [suitcaseError, setSuitcaseError] = useState(false)
   const [suitcaseRetry, setSuitcaseRetry] = useState(0)
 
+  const userId = user?.id
+
   useEffect(() => {
-    if (!user || demoMode) return
+    if (!userId || demoMode) return
     let current = true
     setPassport(null)
     setPassportLoading(true)
@@ -55,10 +57,10 @@ export function ProfilePage() {
       .catch(() => { if (current) { setPassport(null); setPassportError(true) } })
       .finally(() => { if (current) setPassportLoading(false) })
     return () => { current = false }
-  }, [demoMode, passportRetry, user?.id])
+  }, [demoMode, passportRetry, userId])
 
   useEffect(() => {
-    if (!user || demoMode) return
+    if (!userId || demoMode) return
     let current = true
     setSuitcaseTrips(null)
     setSuitcaseGoals([])
@@ -73,7 +75,7 @@ export function ProfilePage() {
       .catch(() => { if (current) { setSuitcaseTrips(null); setSuitcaseError(true) } })
       .finally(() => { if (current) setSuitcaseLoading(false) })
     return () => { current = false }
-  }, [demoMode, suitcaseRetry, user?.id])
+  }, [demoMode, suitcaseRetry, userId])
 
   useEffect(() => {
     if (!user) navigate('/login')

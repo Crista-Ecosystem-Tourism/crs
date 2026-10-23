@@ -6,16 +6,21 @@ import {
   Briefcase,
   ChevronRight,
   Globe,
+  Languages,
   Loader2,
   Luggage,
   Map as MapIcon,
+  Moon,
   Plane,
   Plus,
+  Settings,
+  Sun,
   Target,
   Trash2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useApp } from '@/context/AppContext'
+import { getNavigationCopy } from '@/lib/settingsCopy'
 import { useSuitcaseWorkspace } from '@/hooks/useSuitcaseWorkspace'
 import { geocodeCityCountry } from '@/lib/suitcaseGeocode'
 import { cn, formatDate, getTripDuration } from '@/lib/utils'
@@ -121,6 +126,7 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
             </Button>
           </div>
         </div>
+        <PassportSettingsFooter />
       </div>
   ) : null
 
@@ -221,11 +227,14 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
 
   if (store.error && store.hasLoadedOnce && store.trips.length === 0 && store.goals.length === 0) {
     return (
-      <div className="flex flex-col h-full bg-background items-center justify-center p-6 text-center gap-4">
-        <p className="text-sm text-text-secondary">{store.error}</p>
-        <Button type="button" variant="outline" className="rounded-xl" onClick={() => void store.refresh()}>
-          Повторить
-        </Button>
+      <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center gap-4">
+          <p className="text-sm text-text-secondary">{store.error}</p>
+          <Button type="button" variant="outline" className="rounded-xl" onClick={() => void store.refresh()}>
+            Повторить
+          </Button>
+        </div>
+        <PassportSettingsFooter />
       </div>
     )
   }
@@ -323,7 +332,35 @@ export function SuitcasePanel({ onBack }: Readonly<SuitcasePanelProps>) {
           <ArchiveTab trips={archivedTrips} onOpen={setDetailTripId} />
         </TabsContent>
       </Tabs>
+
+      <PassportSettingsFooter />
     </div>
+  )
+}
+
+/** GDD §3.1: settings live at the bottom of the Passport tab instead of a sliding menu. */
+function PassportSettingsFooter() {
+  const { user, theme, toggleTheme, language, setLanguage } = useApp()
+  const copy = getNavigationCopy(language)
+  const ThemeIcon = theme === 'dark' ? Sun : Moon
+  const itemClass = 'inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent'
+  return (
+    <footer className="flex flex-shrink-0 flex-wrap items-center gap-1 border-t border-border px-4 py-2">
+      {user && (
+        <Link to="/settings" className={itemClass}>
+          <Settings className="h-4 w-4" aria-hidden="true" />
+          {copy.accountSettings}
+        </Link>
+      )}
+      <button type="button" className={itemClass} onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')}>
+        <Languages className="h-4 w-4" aria-hidden="true" />
+        {language === 'ru' ? copy.switchToEnglish : copy.switchToRussian}
+      </button>
+      <button type="button" className={itemClass} onClick={toggleTheme}>
+        <ThemeIcon className="h-4 w-4" aria-hidden="true" />
+        {theme === 'dark' ? copy.lightTheme : copy.darkTheme}
+      </button>
+    </footer>
   )
 }
 

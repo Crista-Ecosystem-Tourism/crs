@@ -40,6 +40,7 @@ describe('OnboardingFlow localization', () => {
     expect(await screen.findByText('Meet Chris')).toBeTruthy()
     expect(screen.getByRole('list', { name: 'First trip steps' })).toBeTruthy()
     expect(screen.getByText('The story text and questions are currently available only in Russian; the original is shown.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choose Russia' }))
     expect(screen.getByText('Moscow ahead')).toBeTruthy()
     expect(screen.getAllByText(/Красная площадь/).length).toBeGreaterThan(0)
@@ -68,6 +69,7 @@ describe('OnboardingFlow localization', () => {
     expect(await screen.findByText('Meet Chris')).toBeTruthy()
     expect(screen.getByText('Russia · Moscow')).toBeTruthy()
     expect(screen.queryByText('The story text and questions are currently available only in Russian; the original is shown.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choose Russia' }))
     expect(screen.getByText('Moscow ahead')).toBeTruthy()
     expect(screen.getByText(/Your first stop is Red Square/)).toBeTruthy()
@@ -76,5 +78,36 @@ describe('OnboardingFlow localization', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play the mini quest' }))
     expect(screen.getByText('What did krasny mean?')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Beautiful' })).toBeTruthy()
+  })
+
+  it('walks the three Chris lines from GDD and keeps v2 countries locked', async () => {
+    useAppMock.mockReturnValue({ language: 'ru' })
+    render(<OnboardingFlow signedIn />)
+
+    expect(await screen.findByText(/Считай это твоим Duolingo для путешествий/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Дальше' }))
+    expect(screen.getByText(/Выбери страну, с которой начнём/)).toBeTruthy()
+    expect(screen.getByText('Доступно')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Япония/ }))
+    expect(screen.getByRole('status').textContent).toBe('Япония откроется во второй версии. Пока начнём с России.')
+    expect(screen.getByText(/Выбери страну/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Выбрать Россию' }))
+    expect(screen.getByText(/это твоя первая точка на карте/)).toBeTruthy()
+    expect(screen.getByRole('figure', { name: 'Голограмма первой точки' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Назад/ }))
+    expect(screen.getByText(/Выбери страну/)).toBeTruthy()
+  })
+
+  it('lets a returning player skip the intro straight to the first fact', async () => {
+    useAppMock.mockReturnValue({ language: 'ru' })
+    render(<OnboardingFlow signedIn />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Пропустить вступление' }))
+    expect(screen.getByText('Русский факт')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Назад/ }))
+    expect(screen.getByText(/это твоя первая точка на карте/)).toBeTruthy()
   })
 })

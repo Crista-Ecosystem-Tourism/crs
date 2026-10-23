@@ -83,6 +83,7 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
   const [passportError, setPassportError] = useState(false)
   const [passportRefreshVersion, setPassportRefreshVersion] = useState(0)
   const [suitcase, setSuitcase] = useState<{ trips: SuitcaseTrip[]; goals: SuitcaseGoal[] } | null>(null)
+  // null: no error; '': generic failure, localized at render time.
   const [suitcaseError, setSuitcaseError] = useState<string | null>(null)
   const [suitcaseLoading, setSuitcaseLoading] = useState(false)
   const [suitcaseRefreshVersion, setSuitcaseRefreshVersion] = useState(0)
@@ -147,7 +148,7 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
       .catch((error: unknown) => {
         if (!current) return
         setSuitcase(null)
-        setSuitcaseError(error instanceof ApiError ? error.detail : copy.suitcaseLoadFailed)
+        setSuitcaseError(error instanceof ApiError ? error.detail : '')
       })
       .finally(() => { if (current) setSuitcaseLoading(false) })
     return () => { current = false }
@@ -304,11 +305,11 @@ function LiveGamePanel({ onBack, signedIn }: GamePanelProps & { signedIn: boolea
             <div>
               <p className="font-sans text-xs uppercase tracking-wide text-text-muted">{copy.suitcaseSource}</p>
               {suitcaseLoading && <p className="mt-2 font-sans text-sm text-text-secondary">{copy.suitcaseLoading}</p>}
-              {suitcaseError && <div role="status" className="mt-2 flex flex-wrap items-center gap-2 font-sans text-sm text-text-secondary">
-                <span>{copy.suitcaseUnavailable(suitcaseError)}</span>
+              {suitcaseError !== null && <div role="status" className="mt-2 flex flex-wrap items-center gap-2 font-sans text-sm text-text-secondary">
+                <span>{copy.suitcaseUnavailable(suitcaseError || copy.suitcaseLoadFailed)}</span>
                 <button type="button" onClick={() => setSuitcaseRefreshVersion((version) => version + 1)} className="text-primary underline underline-offset-2">{copy.retrySuitcase}</button>
               </div>}
-              {!suitcaseLoading && !suitcaseError && suitcase && <>
+              {!suitcaseLoading && suitcaseError === null && suitcase && <>
                 <p className="mt-1 font-display text-lg font-semibold text-text">
                   {copy.tripsAndGoals(activeSuitcaseTrips.length, suitcase.goals.length)}
                 </p>

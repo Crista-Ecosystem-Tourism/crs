@@ -271,7 +271,7 @@ function ReviewQueue({ isEditor }: { isEditor: boolean }) {
       if (active) setError(en ? 'Could not load the review queue.' : 'Не удалось загрузить очередь review.')
     })
     return () => { active = false }
-  }, [isEditor])
+  }, [isEditor, en])
 
   const publish = async (versionId: string) => {
     if (publishingId) return
@@ -412,8 +412,9 @@ export function DataPanel({ onBack }: DataPanelProps) {
     traditions: '',
     practical: [],
   } : null
+  const baseId = base?.id
   useEffect(() => {
-    if (!base) {
+    if (!baseId) {
       setPublishedCountry(null)
       setCountryWikiStatus('idle')
       return
@@ -421,9 +422,9 @@ export function DataPanel({ onBack }: DataPanelProps) {
     let active = true
     setPublishedCountry(null)
     setCountryWikiStatus('loading')
-    getWikiArticle(`country-${base.id}`, language).then((article) => {
+    getWikiArticle(`country-${baseId}`, language).then((article) => {
       if (!active) return
-      if (article.slug === `country-${base.id}`) {
+      if (article.slug === `country-${baseId}`) {
         setPublishedCountry(article)
         setCountryWikiStatus('published')
       } else {
@@ -436,7 +437,7 @@ export function DataPanel({ onBack }: DataPanelProps) {
       }
     })
     return () => { active = false }
-  }, [base?.id, language])
+  }, [baseId, language])
 
   const active = base && publishedCountry?.slug === `country-${base.id}`
     ? {

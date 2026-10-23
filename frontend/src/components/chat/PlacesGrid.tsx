@@ -21,8 +21,6 @@ export function PlacesGrid({ places: messagePlaces, cityName }: PlacesGridProps)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false })
 
-  if (!places || places.length === 0) return null
-
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({
@@ -70,6 +68,8 @@ export function PlacesGrid({ places: messagePlaces, cityName }: PlacesGridProps)
       window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
+
+  if (!places || places.length === 0) return null
 
   const selectedCount = places.filter(p => p.selected).length
 

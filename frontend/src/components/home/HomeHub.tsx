@@ -18,6 +18,9 @@ import { useGameProgress } from '@/hooks/useGameProgress'
 import { getHomeCopy } from '@/lib/homeCopy'
 import { BattlePass } from './BattlePass'
 import { DailyQuiz } from '@/components/game/DailyQuiz'
+import { isMockMode } from '@/api/chatApi'
+import { LiveHomeColumn, LiveHomeStats } from './LiveHomeProgress'
+import { useHomePassport } from '@/hooks/useHomePassport'
 import { gameCountries, gameCountryName, weeklyTrackTitle } from '@/mocks/game'
 
 interface HomeHubProps {
@@ -196,6 +199,9 @@ export function HomeHub({ onSend }: HomeHubProps) {
   const copy = getHomeCopy(language)
   const { countryProgress, stats, passPoints, answeredQuizIds, answerQuiz, resetQuiz, quizStreak } =
     useGameProgress()
+  // Live mode shows only server-owned progress; the demo world, quiz and pass stay in mock mode.
+  const live = !isMockMode()
+  const { state: passportState, retry: retryPassport } = useHomePassport(live ? user?.id : undefined)
 
   // Фокус берём из игры: первая открытая страна, которую ещё не закрыли
   const focus =
@@ -242,6 +248,9 @@ export function HomeHub({ onSend }: HomeHubProps) {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-x-10 gap-y-5">
+              {live ? (
+                <LiveHomeStats passport={passportState.status === 'ready' ? passportState.passport : null} />
+              ) : <>
               <StatTile icon={<CloudSun />} value="12°C" label={copy.weather} />
               <StatTile
                 icon={<Compass />}
@@ -253,11 +262,13 @@ export function HomeHub({ onSend }: HomeHubProps) {
                 value={`${stats.doneQuests}`}
                 label={copy.questsCompleted(stats.doneQuests, stats.totalQuests)}
               />
+              </>}
             </div>
           </div>
 
           {/* Правая колонка: личное состояние, вход в остальные разделы */}
           <div className="flex flex-col gap-4">
+            {live ? <LiveHomeColumn state={passportState} onRetry={retryPassport} /> : <>
             <GlassPanel variant="photo" className="p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -340,18 +351,19 @@ export function HomeHub({ onSend }: HomeHubProps) {
                 streak={quizStreak}
               />
             </GlassPanel>
+            </>}
           </div>
         </div>
 
         {/* Пропуск путешественника: главный крючок удержания, сразу под героем */}
-        <section className="mt-12">
+        {!live && <section className="mt-12">
           <BattlePass
             points={passPoints}
             isPremium={user?.subscription === 'premium'}
             onUpgrade={() => openModal('subscription')}
             language={language}
           />
-        </section>
+        </section>}
 
         {/* Открытия: горизонтальная лента, не сетка одинаковых карточек */}
         <section className="mt-14">

@@ -1,29 +1,17 @@
-import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, X, Moon, Sun, MessageSquare, BookOpen, Luggage, User,
-  ChevronRight, Settings, HelpCircle, LogOut, Globe2, Languages,
+  Plus, Moon, Sun, User,
+  ChevronRight, Settings, HelpCircle, LogOut, Languages,
 } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
-import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { RailButton } from './SidebarRail'
 
-import { cn, getInitials } from '@/lib/utils'
-import { Logo } from '@/components/icons/Logo'
+import { getInitials } from '@/lib/utils'
 import { getNavigationCopy } from '@/lib/settingsCopy'
 
-const menuItems = [
-  { icon: Globe2, id: 'game' },
-  { icon: BookOpen, id: 'data' },
-  { icon: MessageSquare, id: 'chats' },
-  { icon: Luggage, id: 'suitcase' },
-] as const
-
-type MenuId = (typeof menuItems)[number]['id']
-
+/** Desktop rail with account actions; the four primary sections live in the header. */
 export function Sidebar() {
   const navigate = useNavigate()
   const {
@@ -32,42 +20,10 @@ export function Sidebar() {
     toggleTheme,
     language,
     setLanguage,
-    sidebarOpen,
-    setSidebarOpen,
     newChat,
     logout,
-    goHome,
-    setMainView,
-    mainView,
-    currentChatId,
   } = useApp()
   const copy = getNavigationCopy(language)
-  const labels: Record<MenuId, string> = {
-    game: copy.explore,
-    data: copy.wiki,
-    chats: copy.routes,
-    suitcase: copy.passport,
-  }
-
-  const activeMenuId = useMemo<MenuId>(() => {
-    if (currentChatId) return 'chats'
-    if (mainView === 'chatList') return 'chats'
-    if (mainView === 'inspiration') return 'chats'
-    if (mainView === 'saved') return 'chats'
-    if (mainView === 'game') return 'game'
-    if (mainView === 'community') return 'chats'
-    if (mainView === 'placeByPhoto') return 'chats'
-    if (mainView === 'toursGlamping') return 'chats'
-    if (mainView === 'data') return 'data'
-    if (mainView === 'suitcase') return 'suitcase'
-    return 'chats'
-  }, [currentChatId, mainView])
-
-  const openSection = (id: MenuId) => {
-    setSidebarOpen(false)
-    goHome()
-    setMainView(id === 'chats' ? 'chatList' : id)
-  }
 
   const langLabel = language === 'ru' ? copy.switchToEnglish : copy.switchToRussian
   const themeLabel = theme === 'dark' ? copy.lightTheme : copy.darkTheme
@@ -129,79 +85,6 @@ export function Sidebar() {
     </PopoverContent>
   )
 
-  /* ------------------------------------------- мобильный список с подписями */
-
-  const mobileMenu = (
-    <div className="flex h-full flex-col border-r border-border bg-surface">
-      <div className="flex items-center justify-between p-4">
-        <span className="flex items-center gap-2.5">
-          <Logo size={36} />
-          <span className="flex flex-col text-left">
-            <span className="font-sans text-lg font-bold leading-tight text-text">Crista</span>
-            <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-text-muted">
-              Online
-            </span>
-          </span>
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={copy.closeMenu}
-          onClick={() => setSidebarOpen(false)}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <nav className="space-y-1 px-3">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => openSection(item.id)}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-md px-3 py-2.5 font-sans text-sm font-medium transition-colors',
-              activeMenuId === item.id
-                ? 'bg-teal-700 text-white'
-                : 'text-text-secondary hover:bg-panel-2 hover:text-text'
-            )}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {labels[item.id]}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mt-4 px-3">
-        <Button onClick={() => { newChat(); setSidebarOpen(false) }} variant="outline" className="w-full">
-          <Plus />
-          {copy.newChat}
-        </Button>
-      </div>
-
-      <div className="flex-1" />
-
-      <div className="space-y-1 border-t border-border p-3">
-        <button
-          onClick={() => setLanguage(language === 'ru' ? 'en' : 'ru')}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 font-sans text-sm text-text-secondary transition-colors hover:bg-panel-2 hover:text-text"
-        >
-          <Languages className="h-4 w-4" />
-          <span className="flex-1 text-left">{language === 'ru' ? 'Русский' : 'English'}</span>
-          <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase text-text-muted">
-            {language === 'ru' ? 'EN' : 'RU'}
-          </span>
-        </button>
-        <button
-          onClick={toggleTheme}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 font-sans text-sm text-text-secondary transition-colors hover:bg-panel-2 hover:text-text"
-        >
-          <ThemeIcon className="h-4 w-4" />
-          {themeLabel}
-        </button>
-      </div>
-    </div>
-  )
-
   return (
     <>
       {/* Десктоп: рельс из круглых иконок */}
@@ -214,21 +97,8 @@ export function Sidebar() {
 
           <div className="my-3 h-px w-8 shrink-0 bg-hairline-2" />
 
-          {/* Разделов больше, чем в референсе: на низких экранах список
-              прокручивается, а профиль и настройки остаются на виду. */}
-          <nav className="scrollbar-hidden flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto">
-            {menuItems.map((item) => (
-              <RailButton
-                key={item.id}
-                icon={item.icon}
-                label={labels[item.id]}
-                active={activeMenuId === item.id}
-                onClick={() => openSection(item.id)}
-              />
-            ))}
-          </nav>
-
-          <div className="my-3 h-px w-8 shrink-0 bg-panel-2" />
+          {/* Основные разделы переехали в шапку (GDD §3.1); рельс держит действия аккаунта. */}
+          <div className="flex-1" />
 
           <div className="flex shrink-0 flex-col items-center gap-1.5">
             <RailButton
@@ -269,29 +139,6 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Мобильное выдвижное меню */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            />
-            <motion.aside
-              initial={{ x: -260 }}
-              animate={{ x: 0 }}
-              exit={{ x: -260 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 z-50 h-full w-[260px] lg:hidden"
-            >
-              {mobileMenu}
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
     </>
   )
 }

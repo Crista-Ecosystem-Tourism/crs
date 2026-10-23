@@ -1173,7 +1173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       ...prev,
     ])
-  }, [backendAvailable, sendMessage])
+  }, [sendMessage])
 
   // Toggle place selection
   const togglePlaceSelection = useCallback((placeId: string) => {

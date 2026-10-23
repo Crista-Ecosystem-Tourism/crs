@@ -51,7 +51,7 @@ export function MoscowQuest({
         setView('error')
       })
     return () => { active = false }
-  }, [questId, refreshKey, signedIn, language])
+  }, [questId, refreshKey, signedIn, language, copy.moscowQuest.saveFailed])
 
   const choose = async (answerKey: string) => {
     if (!state || view === 'answering' || state.completed) return

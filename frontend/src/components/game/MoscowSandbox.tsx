@@ -59,7 +59,7 @@ export function MoscowSandbox({
         setError(language === 'ru' && requestError instanceof ApiError ? requestError.message : copy.retry)
       })
     return () => { active = false }
-  }, [refreshKey, signedIn, language])
+  }, [refreshKey, signedIn, language, copy.retry])
 
   if (!signedIn) return null
   if (error) {
@@ -190,17 +190,18 @@ function PhotoScannerDrill({ photoScanner, onCorrect }: { photoScanner: NonNulla
 function MoscowWikiArticle({ reference }: { reference: MoscowSandboxState['wiki_reference'] }) {
   const { copy } = useMoscowSandboxCopy()
   const [article, setArticle] = useState<WikiPublishedArticle | null>(null)
+  const versionId = reference?.version_id
 
   useEffect(() => {
     let active = true
-    const request = reference ? getWikiArticleVersion(reference.version_id) : getWikiArticle('moscow')
+    const request = versionId ? getWikiArticleVersion(versionId) : getWikiArticle('moscow')
     request.then((result) => {
       if (active) setArticle(result)
     }).catch(() => {
       // The sandbox must remain available when the optional reading card is offline.
     })
     return () => { active = false }
-  }, [reference?.version_id])
+  }, [versionId])
 
   if (!article) return null
   const summary = typeof article.body.summary === 'string' ? article.body.summary : null

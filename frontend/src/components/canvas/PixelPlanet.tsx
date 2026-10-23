@@ -25,7 +25,7 @@ function mulberry32(a: number) {
 }
 
 // --- Simplex Noise Helper ---
-export function noise2D(x: number, z: number) {
+function noise2D(x: number, z: number) {
     return Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + Math.sin(x * 0.3 + z * 0.2) * 1;
 }
 

@@ -565,7 +565,7 @@ function TeamSection({ language, friends, userId }: { language: 'ru' | 'en'; fri
     } finally {
       setLoading(false)
     }
-  }, [en])
+  }, [en, language])
 
   useEffect(() => { void refreshTeams() }, [refreshTeams])
 

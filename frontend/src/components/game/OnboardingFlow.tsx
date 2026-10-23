@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Award, BatteryMedium, CheckCircle2, Compass, Flame, LoaderCircle, MapPin, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Award, BatteryMedium, CheckCircle2, Compass, Flame, LoaderCircle, Lock, MapPin, Sparkles } from 'lucide-react'
 import { GlassPanel, Chip } from '@/components/ui/glass'
 import { answerRedSquare, getOnboarding, type OnboardingState } from '@/api/gameApi'
 import { isMockMode } from '@/api/chatApi'
@@ -8,9 +8,12 @@ import { useApp } from '@/context/AppContext'
 import { getGameCopy } from '@/lib/gameCopy'
 
 type ViewState = 'loading' | 'ready' | 'answering' | 'error'
-type LessonStep = 'intro' | 'arrival' | 'fact' | 'question'
+type LessonStep = 'welcome' | 'country' | 'arrival' | 'fact' | 'question'
 
-const lessonStepIds: LessonStep[] = ['intro', 'arrival', 'fact', 'question']
+// GDD §2.1–2.3: three Chris lines, country choice, then the ~60 s first quest.
+// Steps are presentation only, so skipping or going back never touches server progress.
+const lessonStepIds: LessonStep[] = ['welcome', 'country', 'arrival', 'fact', 'question']
+const lockedCountryFlags = ['🇺🇸', '🇯🇵', '🇬🇧', '🇨🇳']
 
 /** First GDD learning loop. Its progress and reward are owned by the API. */
 export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; onCompleted?: () => void }) {
@@ -21,7 +24,11 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
   const [state, setState] = useState<OnboardingState | null>(null)
   const [view, setView] = useState<ViewState>('loading')
   const [message, setMessage] = useState<string | null>(null)
-  const [step, setStep] = useState<LessonStep>('intro')
+  const [step, setStep] = useState<LessonStep>('welcome')
+  const [soonCountry, setSoonCountry] = useState<string | null>(null)
+  // The parent may pass an inline callback; keep the latest one without refetching.
+  const onCompletedRef = useRef(onCompleted)
+  useEffect(() => { onCompletedRef.current = onCompleted }, [onCompleted])
 
   useEffect(() => {
     if (!signedIn || isMockMode()) return
@@ -30,7 +37,7 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
       .then((result) => {
         if (!active) return
         setState(result)
-        if (result.completed) onCompleted?.()
+        if (result.completed) onCompletedRef.current?.()
         setView('ready')
       })
       .catch((error: unknown) => {
@@ -39,7 +46,7 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
         setView('error')
       })
     return () => { active = false }
-  }, [signedIn, language])
+  }, [signedIn, language, onboarding.retry])
 
   if (isMockMode()) return null
 
@@ -148,26 +155,63 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
               {onboarding.completed(state.starter_stamp?.title ?? (language === 'en' ? 'Starter stamp' : 'Стартовый штамп'))}
             </span>
           </div>
-        ) : step === 'intro' ? (
+        ) : step === 'welcome' ? (
           <div className="space-y-4">
-            <p className="font-sans text-base leading-7 text-text-secondary">
-              {onboarding.intro(content.chris.name)}
-            </p>
-            <button type="button" onClick={() => setStep('arrival')} className="rounded-md bg-primary px-4 py-3 font-sans text-sm font-semibold text-white transition hover:bg-primary/90">
-              {onboarding.selectRussia}
-            </button>
+            <ChrisLine name={content.chris.name}>{onboarding.welcomeSpeech}</ChrisLine>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setStep('country')} className={primaryButton}>
+                {onboarding.next}
+              </button>
+              <button type="button" onClick={() => setStep('fact')} className={quietButton}>
+                {onboarding.skipIntro}
+              </button>
+            </div>
+          </div>
+        ) : step === 'country' ? (
+          <div className="space-y-4">
+            <ChrisLine name={content.chris.name}>{onboarding.countrySpeech}</ChrisLine>
+            <div className="grid gap-2 sm:grid-cols-5">
+              <div className="rounded-md border border-primary/50 bg-primary/10 p-3 sm:col-span-5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display text-lg font-semibold text-text"><span aria-hidden="true">🇷🇺</span> {content.country.name}</span>
+                  <Chip size="sm" variant="active">{onboarding.countryAvailable}</Chip>
+                </div>
+                <p className="mt-1 font-sans text-xs text-text-muted">{onboarding.countryCoverage}</p>
+                <button type="button" onClick={() => setStep('arrival')} className={`mt-3 ${primaryButton}`}>
+                  {onboarding.selectRussia}
+                </button>
+              </div>
+              {onboarding.lockedCountries.map((name, index) => (
+                <button
+                  key={name}
+                  type="button"
+                  aria-disabled="true"
+                  onClick={() => setSoonCountry(name)}
+                  className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-panel-2/60 p-3 text-left opacity-60 transition hover:opacity-80 sm:col-span-1 sm:flex-col sm:items-start"
+                >
+                  <span className="font-sans text-sm text-text-secondary"><span aria-hidden="true">{lockedCountryFlags[index]}</span> {name}</span>
+                  <span className="flex items-center gap-1 font-sans text-[11px] text-text-muted"><Lock className="h-3 w-3" aria-hidden="true" /> {onboarding.countrySoon}</span>
+                </button>
+              ))}
+            </div>
+            {soonCountry && <p role="status" className="font-sans text-xs text-text-muted">{onboarding.countrySoonNote(soonCountry)}</p>}
+            <BackButton label={copy.back} onClick={() => setStep('welcome')} />
           </div>
         ) : step === 'arrival' ? (
           <div className="space-y-4">
-            <div className="rounded-md bg-panel-2/70 p-4">
+            <ChrisLine name={content.chris.name}>{onboarding.arrivalSpeech}</ChrisLine>
+            <figure aria-label={onboarding.hologramLabel} className="relative overflow-hidden rounded-md border border-teal-400/40 bg-[linear-gradient(160deg,rgba(45,212,191,0.18),rgba(13,17,23,0.6))] p-4 shadow-[0_0_32px_rgba(45,212,191,0.25)]">
               <p className="font-display text-xl font-semibold text-text">{onboarding.arrivalHeading}</p>
               <p className="mt-2 font-sans text-sm leading-6 text-text-secondary">
-              {onboarding.arrivalBody(content.scene.title)}
+                {onboarding.arrivalBody(content.scene.title)}
               </p>
+            </figure>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setStep('fact')} className={primaryButton}>
+                {onboarding.arrivalAction}
+              </button>
+              <BackButton label={copy.back} onClick={() => setStep('country')} />
             </div>
-            <button type="button" onClick={() => setStep('fact')} className="rounded-md bg-primary px-4 py-3 font-sans text-sm font-semibold text-white transition hover:bg-primary/90">
-              {onboarding.arrivalAction}
-            </button>
           </div>
         ) : step === 'fact' ? (
           <div className="space-y-4">
@@ -177,9 +221,12 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
                 {copy.source}: {content.fact.source_label ?? onboarding.sourceFallback}
               </a>
             </div>
-            <button type="button" onClick={() => setStep('question')} className="rounded-md bg-primary px-4 py-3 font-sans text-sm font-semibold text-white transition hover:bg-primary/90">
-              {onboarding.factAction}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setStep('question')} className={primaryButton}>
+                {onboarding.factAction}
+              </button>
+              <BackButton label={copy.back} onClick={() => setStep('arrival')} />
+            </div>
           </div>
         ) : (
           <>
@@ -207,5 +254,27 @@ export function OnboardingFlow({ signedIn, onCompleted }: { signedIn: boolean; o
         )}
       </div>
     </GlassPanel>
+  )
+}
+
+const primaryButton = 'rounded-md bg-primary px-4 py-3 font-sans text-sm font-semibold text-white transition hover:bg-primary/90'
+const quietButton = 'rounded-md px-4 py-3 font-sans text-sm text-text-secondary transition hover:bg-white/5 hover:text-text'
+
+function ChrisLine({ name, children }: { name: string; children: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xl">🦝</span>
+      <p className="rounded-md bg-panel-2/70 p-4 font-sans text-base leading-7 text-text-secondary">
+        <span className="sr-only">{name}: </span>{children}
+      </p>
+    </div>
+  )
+}
+
+function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1.5 ${quietButton}`}>
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {label}
+    </button>
   )
 }

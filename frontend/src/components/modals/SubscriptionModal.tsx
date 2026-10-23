@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Crown, Sparkles, Zap, ShieldCheck, Gem } from 'lucide-react'
+import { Check, Crown, Sparkles, Zap, ShieldCheck, Gem, type LucideIcon } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ function PlanCard({ plan, isSelected, onSelect, isAnnual }: {
   onSelect: () => void
   isAnnual: boolean
 }) {
-  const icons: Record<SubscriptionPlan, any> = {
+  const icons: Record<SubscriptionPlan, LucideIcon> = {
     basic: Zap,
     pro: ShieldCheck,
     premium: Gem,
