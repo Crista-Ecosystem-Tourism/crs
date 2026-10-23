@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { fetchPublicTripMiniSite } from '@/api/suitcaseApi'
 import { PublicTripMiniSite } from '../PublicTripMiniSite'
 
@@ -36,9 +36,10 @@ describe('PublicTripMiniSite', () => {
     expect(screen.getByText('The square was established in the 15th century.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'History source' }).getAttribute('rel')).toBe('noopener noreferrer')
     expect(screen.getByTestId('public-trip-map')).toBeTruthy()
+    // Head metadata is applied in a passive effect that can land after the heading is in the DOM.
+    await waitFor(() => expect(document.title).toBe('Moscow, Russia — Crista'))
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex, nofollow')
     expect(document.querySelector('link[rel="canonical"]')).toBeNull()
-    expect(document.title).toBe('Moscow, Russia — Crista')
     expect(screen.queryByText(/expense|расход/i)).toBeNull()
   })
 
@@ -62,7 +63,8 @@ describe('PublicTripMiniSite', () => {
 
     const { unmount } = render(<PublicTripMiniSite slug="public-trip" />)
     expect(await screen.findByRole('heading', { name: 'Lisbon weekend' })).toBeTruthy()
-    expect(document.title).toBe('Lisbon weekend — Crista')
+    // Head metadata is applied in a passive effect that can land after the heading is in the DOM.
+    await waitFor(() => expect(document.title).toBe('Lisbon weekend — Crista'))
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('A sunny city break')
     const canonicalUrl = `${window.location.origin}/t/public-trip`
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(canonicalUrl)

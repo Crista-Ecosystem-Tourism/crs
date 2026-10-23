@@ -14,6 +14,9 @@ test('signed-in author sends a country Wiki version to server review', async ({ 
   await page.getByRole('button', { name: 'Редактировать или добавить информацию' }).click()
   await page.getByLabel('Название источника').fill('Тестовый редакционный источник')
   await page.getByLabel('Ссылка на источник').fill('https://example.test/wiki-source')
+  // H.1 provenance matrix: every draft states its rights basis and an HTTPS terms link.
+  await page.getByLabel('Основание прав').selectOption({ label: 'CC BY' })
+  await page.getByLabel('Ссылка на права или лицензию').fill('https://creativecommons.org/licenses/by/4.0/')
   await page.getByLabel('Лицензия').fill('CC BY 4.0')
   await page.getByRole('button', { name: 'Отправить на review' }).click()
 

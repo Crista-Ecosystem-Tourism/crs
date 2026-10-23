@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "profile": "crista",
+  "note": "Черновики студии ассетов. Картинка остаётся черновиком, пока status не approved.",
+  "items": {
+    "spb-neva-embankment": {
+      "id": "spb-neva-embankment",
+      "title": "Санкт-Петербург: набережная Невы",
+      "status": "draft",
+      "revision": 1,
+      "frames": {
+        "story": {
+          "file": "spb-neva-embankment-story.webp",
+          "path": "/images/studio-drafts/spb-neva-embankment-story.webp",
+          "width": 1536,
+          "height": 864,
+          "sha256": "bbaaefe7d9482b825fc15ef6c5a623c43ef6e3e815d987097268088f1f989db2",
+          "crop": [
+            0,
+            80,
+            1536,
+            864
+          ]
+        }
+      },
+      "model": "local-gpt/gpt-6.1-sol",
+      "promptSha256": "66fcd8e34cf34dd65d3299fae1174f4da639a5cfc632818fec58008fcf8e4ceb",
+      "briefSha256": "acf0354959ec0be250a99f55e143792ce82a1829eada69d165f302f4fd77ccd2",
+      "runId": "11fbb012-81a1-47f6-8248-c50d1bb0763c",
+      "generatedAt": "2026-10-23T18:37:00.392Z",
+      "approval": null,
+      "history": [
+        {
+          "revision": 1,
+          "status": "draft",
+          "at": "2026-10-23T18:37:00.392Z",
+          "runId": "11fbb012-81a1-47f6-8248-c50d1bb0763c"
+        }
+      ]
+    }
+  }
+}
