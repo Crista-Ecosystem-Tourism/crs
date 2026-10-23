@@ -55,6 +55,7 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "completion_stamp": {
                 "key": "moscow-city-explorer", "title": "Штамп «Москва: городской круг»",
             },
+            "wiki_reference": {"slug": "moscow", "version_id": "wiki-moscow-v2"},
         })
         self.assertEqual(
             [node["id"] for node in initial_path["nodes"]],
@@ -100,10 +101,11 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         passport = await self.game.get_passport(self.user_id)
         self.assertEqual(passport["profile"], correct["profile"])
+        self.assertEqual(passport["daily"], correct["daily"])
         self.assertEqual(passport["stamps"][0]["key"], "moscow-starter")
         self.assertEqual(next(city for city in passport["cities"] if city["id"] == "moscow")["completed_quests"], 1)
         async with self.sessions() as db:
-            db.add(SavedRoute(id="passport-route", user_id=self.user_id, name="Музеи", destination="Москва", places={}, created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc)))
+            db.add(SavedRoute(id=f"passport-route-{self.user_id}", user_id=self.user_id, name="Музеи", destination="Москва", places={}, created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc)))
             await db.commit()
         passport_with_route = await self.game.get_passport(self.user_id)
         self.assertEqual(passport_with_route["routes"][0]["destination"], "Москва")
@@ -247,10 +249,10 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("target", sandbox["price_slider"])
         self.assertEqual(sandbox["story"]["title"], "Сцена: Красная площадь")
         self.assertIn("иллюстрация", sandbox["story"]["media_credit"].lower())
-        self.assertEqual(sandbox["wiki_reference"], {"slug": "moscow", "version_id": "wiki-moscow-v1"})
+        self.assertEqual(sandbox["wiki_reference"], {"slug": "moscow", "version_id": "wiki-moscow-v2"})
         self.assertEqual(
             {lesson["wiki_reference"]["version_id"] for lesson in sandbox["lessons"]},
-            {"wiki-moscow-v1"},
+            {"wiki-moscow-v2"},
         )
         self.assertEqual(sandbox["photo_scanner"]["title"], "Фото-сканер: Кремлёвская стена")
         self.assertEqual(len(sandbox["photo_scanner"]["hotspots"]), 3)
@@ -389,7 +391,9 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         clock[0] = datetime(2026, 9, 4, 9, tzinfo=timezone.utc)  # Moscow day 4: day 3 was skipped
         skipped_day = await game.get_onboarding(self.user_id)
-        self.assertEqual(skipped_day["profile"], {"xp": 75, "energy": 5, "streak": 2})
+        # A missed Moscow day is visible as a broken streak before the next answer.
+        self.assertEqual(skipped_day["profile"], {"xp": 75, "energy": 5, "streak": 0})
+        self.assertEqual(skipped_day["daily"]["streak"], 0)
         reset_streak = await game.answer_moscow_quest(self.user_id, "moscow-tsar-bell", "1735")
         self.assertEqual(reset_streak["profile"], {"xp": 100, "energy": 5, "streak": 1})
         self.assertEqual(reset_streak["daily"]["completed_quests"], 1)
@@ -418,13 +422,13 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_wiki_draft_is_private_until_editorial_publish(self):
         slug = f"moscow-test-{self.user_id[:8]}"
         moscow = await self.wiki.get_published("moscow")
-        self.assertEqual(moscow["title"], "Москва")
-        self.assertEqual(len(moscow["sources"]), 2)
+        self.assertEqual(moscow["title"], "Москва: Кремль и Красная площадь")
+        self.assertEqual(len(moscow["sources"]), 1)
         self.assertEqual((await self.wiki.get_published_version(moscow["version_id"]))["slug"], "moscow")
         moscow_english = await self.wiki.get_published("moscow", "en")
         self.assertEqual(moscow_english["content_language"], "en")
-        self.assertEqual(moscow_english["version_id"], "wiki-moscow-en-v1")
-        self.assertEqual(moscow_english["title"], "Moscow")
+        self.assertEqual(moscow_english["version_id"], "wiki-moscow-en-v2")
+        self.assertEqual(moscow_english["title"], "Moscow: the Kremlin and Red Square")
         japan = await self.wiki.get_published("country-jp")
         self.assertEqual(japan["version_id"], "wiki-country-jp-v1")
         self.assertEqual(japan["title"], "Япония")
@@ -457,7 +461,14 @@ class GameOnboardingIntegrationTests(unittest.IsolatedAsyncioTestCase):
             slug,
             "Москва: тестовый черновик",
             {"blocks": [{"type": "paragraph", "text": "Проверяемый текст."}]},
-            [{"label": "Официальный источник", "url": "https://example.test/source"}],
+            [{
+                "label": "Официальный источник",
+                "url": "https://example.test/source",
+                "source_kind": "official",
+                "rights_basis": "public_facts",
+                "rights_url": "https://example.test/rights",
+                "checked_at": "2026-09-28",
+            }],
             "CC BY 4.0",
         )
         self.assertEqual(draft["status"], "draft")
