@@ -172,6 +172,7 @@ def osm_to_place(element: dict[str, Any], region_hint: str | None = None) -> Nor
         description=description if isinstance(description, str) else None,
         description_lang=description_lang,
         tags={k: v for k, v in tags.items() if isinstance(v, (str, int, float, bool))},
+        hours=hours,
         phone=tags.get("contact:phone") or tags.get("phone"),
         website=tags.get("contact:website") or tags.get("website"),
         wiki_q=wiki_q,
