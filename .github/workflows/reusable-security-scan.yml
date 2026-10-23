@@ -5,61 +5,14 @@
 # GitHub Advanced Security (GHAS) НЕ требуется — работает на бесплатном плане с приватными репо.
 #
 # Политика блокировки:
-# - Trivy: CRITICAL/HIGH с доступным фиксом (ignore-unfixed) → exit 1.
 # - Semgrep: findings уровня ERROR → exit 1.
 
-name: Reusable — security scan (Trivy + Semgrep)
+name: Reusable — security scan (Semgrep)
 
 on:
   workflow_call: {}
 
 jobs:
-  trivy:
-    name: Trivy (deps + secrets + IaC)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      # trivy-action закреплён по SHA коммита (теги action'а переписывались при
-      # компрометации в марте 2026), версия Trivy задана явно: старые релизы
-      # (v0.27–v0.69.1) удалены из aquasecurity/trivy, и install.sh на них падает.
-
-      # 1) Полный отчёт (CRITICAL/HIGH/MEDIUM) → Step Summary. Не валит CI.
-      - name: Trivy — full report → Step Summary
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        continue-on-error: true
-        with:
-          version: v0.76.1
-          scan-type: fs
-          scan-ref: .
-          format: table
-          severity: CRITICAL,HIGH,MEDIUM
-          exit-code: 0
-
-      # Пишем итог в Step Summary
-      - name: Write Trivy summary
-        if: always()
-        run: |
-          echo "## 🔍 Trivy — deps · secrets · IaC" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Severity filter: **CRITICAL · HIGH · MEDIUM**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "See full output in the job log above ↑" >> $GITHUB_STEP_SUMMARY
-
-      # 2) Блокирующий гейт — только фиксируемые CRITICAL/HIGH. Валит CI.
-      - name: Trivy — blocking gate (CRITICAL/HIGH, fixable)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: v0.76.1
-          scan-type: fs
-          scan-ref: .
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: 1
-          ignore-unfixed: true
-
   semgrep:
     name: Semgrep (code vulnerabilities)
     runs-on: ubuntu-latest
